@@ -1055,14 +1055,184 @@
             background: rgba(255, 43, 59, 0.08);
         }
 
-        .price-lbl {
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.62);
-            letter-spacing: 0.15em;
-            margin-bottom: 0.25rem;
-            display: inline-block;
-            font-weight: 700;
+        .product-card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            align-items: center;
+            width: 100%;
+            margin-top: 0.75rem;
+        }
+
+        .compare-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.84rem;
+            cursor: pointer;
+        }
+
+        .compare-toggle input {
+            width: 1rem;
+            height: 1rem;
+            accent-color: #ff2b3b;
+        }
+
+        .compare-drawer {
+            position: fixed;
+            right: 1rem;
+            bottom: 1rem;
+            width: min(420px, calc(100% - 2rem));
+            background: rgba(12, 6, 16, 0.96);
+            border: 1px solid rgba(255, 43, 59, 0.24);
+            border-radius: 1.15rem;
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
+            padding: 1rem;
+            display: none;
+            z-index: 150;
+        }
+
+        .compare-drawer.open {
+            display: block;
+        }
+
+        .compare-drawer h4 {
+            margin-bottom: 0.85rem;
+            font-size: 1rem;
+            font-weight: 900;
+            color: #ffffff;
+        }
+
+        .compare-list {
+            display: grid;
+            gap: 0.7rem;
+            margin-bottom: 1rem;
+        }
+
+        .compare-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0.8rem 0.85rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 43, 59, 0.12);
+        }
+
+        .compare-item img {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 0.85rem;
+        }
+
+        .compare-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .spec-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            color: #f5e9ff;
+        }
+
+        .spec-table th,
+        .spec-table td {
+            padding: 0.75rem 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.92rem;
+        }
+
+        .spec-table th {
+            text-align: left;
+            color: #d6c7ff;
+            width: 36%;
+            white-space: nowrap;
+        }
+
+        .detail-extra {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .detail-recommendations {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 43, 59, 0.12);
+            border-radius: 1.25rem;
+            padding: 1.3rem;
+        }
+
+        .cross-sell-grid {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .compare-spec-table {
+            min-width: 30rem;
+        }
+
+        @media (min-width: 860px) {
+            .cross-sell-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .quick-view-grid {
+                grid-template-columns: 1.1fr 0.9fr;
+            }
+        }
+
+        .quick-view-grid {
+            display: grid;
+            gap: 1.4rem;
+        }
+
+        .quick-view-image {
+            border-radius: 1.25rem;
+            background: rgba(255, 255, 255, 0.04);
+            overflow: hidden;
+            min-height: 320px;
+            display: grid;
+            place-items: center;
+        }
+
+        .quick-view-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .quick-view-copy h3 {
+            margin-top: 0.4rem;
+            margin-bottom: 0.6rem;
+            font-size: 1.55rem;
+            line-height: 1.1;
+            color: #fff;
+        }
+
+        .compare-modal-content {
+            max-width: 980px;
+            width: min(100%, 98vw);
+        }
+
+        .compare-modal-content .spec-table th,
+        .compare-modal-content .spec-table td {
+            color: rgba(255, 255, 255, 0.92);
+        }
+
+        .compare-modal-content .spec-table th {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .compare-summary {
+            color: rgba(245, 233, 255, 0.75);
+            margin-bottom: 1rem;
         }
 
         .product-price {
@@ -1736,66 +1906,99 @@
     </nav>
 
     @php
-        $displayCategories = collect($categories ?? [])->mapWithKeys(function ($category) {
+        $allProducts = collect($products ?? []);
+        $displayCategories = collect($categories ?? [])->filter(function ($category) use ($allProducts) {
+            return $allProducts->contains(function ($product) use ($category) {
+                return optional($product->category)->slug === $category->slug;
+            });
+        })->mapWithKeys(function ($category) {
             return [$category->slug => ['title' => $category->name, 'slug' => $category->slug]];
-        })->toArray();
+        });
+
+        if ($displayCategories->isEmpty() && $allProducts->isNotEmpty()) {
+            $displayCategories = collect(['all' => ['title' => 'All Products', 'slug' => 'all']]);
+        }
+
+        $displayCategories = $displayCategories->toArray();
         $categoryCounts = [];
-        $searchProducts = collect($products ?? [])->map(function($product) {
+        $searchProducts = $allProducts->map(function($product) {
             return [
                 'name' => $product->name ?? '',
                 'url' => route('product.show', ['id' => $product->id]),
-                'category' => optional($product->category)->name ?? '',
+                'category' => optional($product->category)->name ?? 'Uncategorized',
                 'description' => $product->description ?? '',
             ];
         })->values();
+
+        foreach($displayCategories as $slug => $meta) {
+            if ($slug === 'all') {
+                $categoryCounts[$slug] = $allProducts->count();
+                continue;
+            }
+            $categoryCounts[$slug] = $allProducts->filter(function($p) use ($slug) {
+                return isset($p->category) && $p->category->slug === $slug;
+            })->count();
+        }
     @endphp
 
     <section class="hero-banner">
         <div class="hero-copy">
-            <span class="eyebrow">Baraka soler shop</span>
-            <h1>Image-first solar shopping with warmth, detail, and easy checkout.</h1>
-            <p>Explore premium batteries, panels, inverters and smart energy kits through a visual catalog designed for a more natural, gallery-style buying experience.</p>
+            <span class="eyebrow">Baraka Solar Shop</span>
+            <h1>Power your home with smarter solar gear and seamless checkout.</h1>
+            <p>Shop premium products with clear specs, local M-Pesa pay, and curated bundles for every installation.</p>
+            <div class="hero-search-panel">
+                <form action="{{ route('shop.index') }}" method="GET" class="hero-search-form">
+                    <input type="search" name="search" value="{{ $searchQuery ?? '' }}" placeholder="Search devices by name, brand, or feature" aria-label="Search products" />
+                    <button type="submit" class="btn btn-primary">Search inventory</button>
+                </form>
+                <div class="trust-badges">
+                    <span>Secure checkout</span>
+                    <span>Fast local delivery</span>
+                    <span>12-month warranty</span>
+                    <span>30-day returns</span>
+                </div>
+            </div>
             <div class="hero-actions">
-                <button type="button" class="btn btn-primary" onclick="document.getElementById('shop-products').scrollIntoView({ behavior: 'smooth' });">Browse catalog</button>
-                <button type="button" class="btn btn-secondary" onclick="openAuthModal();">Sign in to buy</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('shop-products').scrollIntoView({ behavior: 'smooth' });">Browse products</button>
+                <button type="button" class="btn btn-secondary" onclick="openAuthModal();">Sign in / checkout</button>
             </div>
             <div class="hero-highlights">
-                <div>Rich product imagery</div>
-                <div>Secure M-Pesa checkout</div>
-                <div>Local stock & delivery</div>
-                <div>Same-day order processing</div>
+                <div>
+                    <strong>Fast M-Pesa pay</strong>
+                    <span>Checkout instantly with STK push from every product.</span>
+                </div>
+                <div>
+                    <strong>Smart category hub</strong>
+                    <span>Find solar, batteries, security, and accessories quickly.</span>
+                </div>
+                <div>
+                    <strong>Device-grade specs</strong>
+                    <span>Search and compare items across performance, battery, and price.</span>
+                </div>
             </div>
-            <div class="hero-loop-text">
-                <span class="loop-label">Explore items:</span>
-                @foreach($heroLoopItems as $item)
-                    <span class="loop-item{{ $loop->first ? ' active' : '' }}">{{ $item }}</span>
+            <div class="hero-loop-text" aria-live="polite">
+                <span class="loop-label">Trending now</span>
+                @foreach($heroLoopItems as $index => $item)
+                    <span class="loop-item{{ $index === 0 ? ' active' : '' }}">{{ $item }}</span>
                 @endforeach
             </div>
         </div>
         <div class="hero-image">
-            @php
-                $heroSlides = isset($products) ? collect($products)->take(8) : collect([]);
-                if ($heroSlides->count() > 0 && $heroSlides->count() < 4) {
-                    $heroSlides = $heroSlides->concat($heroSlides)->take(4);
-                }
-            @endphp
-            @if($heroSlides->count() > 0)
+            @if(isset($products) && count($products) > 0)
                 <div class="featured-carousel" id="featured-carousel">
-                    @foreach($heroSlides as $slide)
+                    @foreach(collect($products)->take(6) as $slide)
                         <div class="carousel-slide{{ $loop->first ? ' active' : '' }}">
-                            <img src="{{ asset($slide->image_path) }}" alt="{{ $slide->name }}">
+                            <img src="{{ asset($slide->image_path ?: 'images/hero-default.png') }}" alt="{{ $slide->name }}" loading="lazy" onerror="this.onerror=null;this.src='{{ asset('images/hero-default.png') }}'">
                             <div class="carousel-meta">
                                 <span class="carousel-title">{{ $slide->name }}</span>
                                 <span class="carousel-price">Ksh {{ number_format($slide->price, 2) }}</span>
                             </div>
                         </div>
                     @endforeach
-                    @if($heroSlides->count() > 1)
-                        <div class="carousel-controls">
-                            <button type="button" class="carousel-nav prev" aria-label="Previous item">‹</button>
-                            <button type="button" class="carousel-nav next" aria-label="Next item">›</button>
-                        </div>
-                    @endif
+                    <div class="carousel-controls" aria-label="Carousel navigation">
+                        <button type="button" class="carousel-nav prev" aria-label="Previous item">‹</button>
+                        <button type="button" class="carousel-nav next" aria-label="Next item">›</button>
+                    </div>
                 </div>
             @else
                 <img src="{{ asset($heroImage) }}" alt="Featured solar product">
@@ -1803,23 +2006,26 @@
         </div>
     </section>
 
-    @php
-        foreach($displayCategories as $slug => $meta) {
-            $categoryCounts[$slug] = collect($products)->filter(function($p) use ($slug) {
-                return isset($p->category) && $p->category->slug === $slug;
-            })->count();
-        }
-    @endphp
-
-    <section class="category-panel-list">
+    <section class="category-hub">
         @foreach($displayCategories as $slug => $meta)
             @php $count = $categoryCounts[$slug] ?? 0; @endphp
-            <a href="{{ route('shop.category', ['slug' => $slug]) }}" class="category-panel category-panel-link">
-                <span class="panel-line panel-line-title">{{ strip_tags($meta['title']) }}</span>
-                <span class="panel-line panel-line-subtitle">{{ $count }} items available</span>
-                <span class="panel-line panel-line-cta">Tap to open category</span>
+            <a href="{{ $slug === 'all' ? route('shop.index') : route('shop.category', ['slug' => $slug]) }}" class="category-block">
+                <span class="icon">{{ $meta['icon'] }}</span>
+                <div>
+                    <strong>{{ strip_tags($meta['title']) }}</strong>
+                    <span>{{ $count }} items</span>
+                </div>
             </a>
         @endforeach
+    </section>
+
+    <section class="filter-bar">
+        <div class="filter-pill">Brand</div>
+        <div class="filter-pill">Price</div>
+        <div class="filter-pill">Battery</div>
+        <div class="filter-pill">Performance</div>
+        <div class="filter-pill">Popular</div>
+        <button type="button" class="btn btn-secondary">Advanced filters</button>
     </section>
 
     @if(isset($productDetail))
@@ -1837,7 +2043,7 @@
                     <p class="detail-meta">{{ $productDetail->description }}</p>
                     <div class="detail-actions">
                         <button type="button" class="btn btn-primary" id="detail-add-cart-btn" data-id="{{ $productDetail->id }}" data-name="{{ $productDetail->name }}" data-price="{{ $productDetail->price }}">Add to cart</button>
-                        <button type="button" class="btn btn-secondary" id="detail-buy-now-btn" data-id="{{ $productDetail->id }}" data-name="{{ $productDetail->name }}" data-price="{{ $productDetail->price }}">Buy now</button>
+                        <button type="button" class="btn btn-secondary" id="detail-buy-now-btn" data-id="{{ $productDetail->id }}" data-name="{{ $productDetail->name }}" data-price="{{ $productDetail->price }}">Pay with M-Pesa</button>
                     </div>
                 </div>
             </div>
@@ -1847,71 +2053,103 @@
     <main id="shop-products">
         @if(empty($products) || count($products) === 0)
             <div style="text-align:center; padding:4rem 1.5rem; background: rgba(255, 43, 59, 0.12); border:1px dashed rgba(255, 43, 59, 0.24); border-radius: 28px; margin: 2rem auto; max-width: 44rem; color: rgba(255,255,255,0.9);">
-                <p style="font-weight:700; margin-bottom:1rem;">No active items found matching your catalog filters.</p>
-                <a href="/" style="display:inline-flex; align-items:center; justify-content:center; padding:0.85rem 1.4rem; border-radius:999px; background: linear-gradient(135deg,#ff2b3b,#b3001b); color:#fff; font-weight:700;">Reset Catalog</a>
+                <p style="font-weight:700; margin-bottom:1rem;">No items are currently available in this shop.</p>
+                <a href="{{ route('shop.index') }}" style="display:inline-flex; align-items:center; justify-content:center; padding:0.85rem 1.4rem; border-radius:999px; background: linear-gradient(135deg,#ff2b3b,#b3001b); color:#fff; font-weight:700;">Back to home</a>
             </div>
         @else
             @php
-            // categories are defined above for both panel and product sections
-        @endphp
+                $uncategorizedProducts = collect($products)->filter(function($p) use ($displayCategories) {
+                    return !isset($p->category) || !array_key_exists($p->category->slug, $displayCategories);
+                });
+            @endphp
 
             @foreach($displayCategories as $slug => $meta)
                 @php
-                    $catProducts = collect($products)->filter(function($p) use ($slug) { return isset($p->category) && $p->category->slug === $slug; });
-                    $visibleCount = $slug === 'solar-panels' ? 4 : 3;
+                    $catProducts = collect($products);
+                    if ($slug !== 'all') {
+                        $catProducts = $catProducts->filter(function($p) use ($slug) {
+                            return isset($p->category) && $p->category->slug === $slug;
+                        });
+                    }
                 @endphp
                 @if($catProducts->count() > 0)
-                    <section class="category-block" id="{{ $slug }}">
+                    <section class="category-showcase" id="{{ $slug }}">
                         <div class="category-heading">
                             <span>{{ $meta['title'] }}</span>
-                            <span class="badge">{{ $catProducts->count() }} SKUs</span>
+                            <span class="badge">{{ $catProducts->count() }} items</span>
                         </div>
-                        @if($slug === 'solar-batteries')
-                            <div class="section-intro">Best sellers and top-rated power storage systems for homes and businesses.</div>
-                        @endif
-
+                        <div class="section-intro">Browse the {{ $meta['title'] }} collection and pay with M-Pesa in a few taps.</div>
                         <div class="grid-container">
                             @foreach($catProducts as $product)
-                                <article class="card{{ $loop->index >= $visibleCount ? ' product-hidden' : '' }}" data-product-url="{{ route('product.show', ['id' => $product->id]) }}">
+                                <article class="card product-card" data-product-url="{{ route('product.show', ['id' => $product->id]) }}">
                                     <div class="image-frame">
-                                        <button type="button" class="image-view-btn" data-nav-url="{{ route('product.show', ['id' => $product->id]) }}" onclick="event.stopPropagation();">
-                                            <img src="{{ asset($product->image_path) }}" alt="{{ $product->name }}">
-                                            <div class="image-overlay"><span class="overlay-label">View details</span></div>
-                                        </button>
+                                        <img src="{{ asset($product->image_path) }}" alt="{{ $product->name }}">
                                     </div>
                                     <div class="card-body">
+                                        <span class="badge" style="display:inline-flex; margin-bottom:0.85rem; background: rgba(255, 43, 59, 0.12); color:#fff; font-size:0.78rem; padding:0.35rem 0.8rem; border-radius:999px;">M-Pesa Ready</span>
                                         <h3 class="product-title">{{ $product->name }}</h3>
+                                        <p class="product-desc">{{ Str::limit($product->description, 90) }}</p>
                                     </div>
                                     <div class="card-footer">
                                         <div>
                                             <span class="price-lbl">Price</span>
                                             <div class="product-price">Ksh {{ number_format($product->price, 2) }}</div>
-                                            @if(isset($product->stock) && $product->stock <= 0)
-                                                <div style="color:#ff9aa2;font-weight:800;margin-top:6px;">Not available for now</div>
-                                            @endif
+                                            <label class="compare-toggle">
+                                                <input type="checkbox" class="compare-checkbox" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-image="{{ asset($product->image_path) }}" data-product-price="{{ $product->price }}" data-product-category="{{ optional($product->category)->name ?? 'Uncategorized' }}" data-product-wattage="{{ $product->wattage }}" data-product-capacity="{{ $product->capacity_ah }}" data-product-voltage="{{ $product->voltage }}" data-product-url="{{ route('product.show', ['id' => $product->id]) }}" />
+                                                Compare
+                                            </label>
                                         </div>
                                         <div class="card-actions">
-                                            <button type="button" class="btn btn-add add-to-cart-btn" data-id="{{ $product->id }}" onclick="event.stopPropagation();" {{ (isset($product->stock) && $product->stock <= 0) ? 'disabled' : '' }}>Add to cart</button>
-                                            <button type="button" class="btn btn-pay mpesa-pay-btn" data-id="{{ $product->id }}" data-price="{{ $product->price }}" onclick="event.stopPropagation();">Pay M-Pesa</button>
-                                            @if(session()->has('customer_user'))
-                                                <button type="button" class="btn btn-buy product-buy-btn" data-id="{{ $product->id }}" data-price="{{ $product->price }}" data-name="{{ $product->name }}" onclick="event.stopPropagation();">Buy</button>
-                                            @else
-                                                <button type="button" class="btn btn-buy" onclick="event.stopPropagation(); openAuthModal();">Sign in</button>
-                                            @endif
+                                            <button type="button" class="btn btn-add add-to-cart-btn" data-id="{{ $product->id }}" onclick="event.stopPropagation();">Add</button>
+                                            <button type="button" class="btn btn-pay mpesa-pay-btn" data-id="{{ $product->id }}" data-price="{{ $product->price }}" onclick="event.stopPropagation();">Pay</button>
+                                            <button type="button" class="btn btn-secondary quick-view-btn" data-id="{{ $product->id }}" data-name="{{ $product->name }}" data-image="{{ asset($product->image_path) }}" data-price="{{ $product->price }}" data-description="{{ $product->description }}" data-category="{{ optional($product->category)->name ?? 'Uncategorized' }}" data-wattage="{{ $product->wattage }}" data-capacity="{{ $product->capacity_ah }}" data-voltage="{{ $product->voltage }}" data-url="{{ route('product.show', ['id' => $product->id]) }}" onclick="event.stopPropagation();">Quick view</button>
                                         </div>
                                     </div>
                                 </article>
                             @endforeach
                         </div>
-                        @if($catProducts->count() > $visibleCount)
-                            @php $remaining = $catProducts->count() - $visibleCount; @endphp
-                            <button type="button" class="show-more-btn" data-target="{{ $slug }}" data-visible-count="{{ $visibleCount }}" data-remaining="{{ $remaining }}">
-                                Show all {{ $remaining }} items
-                            </button>
-                        @endif
                     </section>
                 @endif
             @endforeach
+
+            @if($uncategorizedProducts->count() > 0)
+                <section class="category-showcase category-showcase-uncategorized">
+                    <div class="category-heading">
+                        <span>Other products</span>
+                        <span class="badge">{{ $uncategorizedProducts->count() }} items</span>
+                    </div>
+                    <div class="section-intro">Products without a category were placed here so nothing is lost.</div>
+                    <div class="grid-container">
+                        @foreach($uncategorizedProducts as $product)
+                            <article class="card product-card" data-product-url="{{ route('product.show', ['id' => $product->id]) }}">
+                                <div class="image-frame">
+                                    <img src="{{ asset($product->image_path) }}" alt="{{ $product->name }}">
+                                </div>
+                                <div class="card-body">
+                                    <span class="badge" style="display:inline-flex; margin-bottom:0.85rem; background: rgba(255, 43, 59, 0.12); color:#fff; font-size:0.78rem; padding:0.35rem 0.8rem; border-radius:999px;">M-Pesa Ready</span>
+                                    <h3 class="product-title">{{ $product->name }}</h3>
+                                    <p class="product-desc">{{ Str::limit($product->description, 90) }}</p>
+                                </div>
+                                <div class="card-footer">
+                                    <div>
+                                        <span class="price-lbl">Price</span>
+                                        <div class="product-price">Ksh {{ number_format($product->price, 2) }}</div>
+                                        <label class="compare-toggle">
+                                            <input type="checkbox" class="compare-checkbox" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-image="{{ asset($product->image_path) }}" data-product-price="{{ $product->price }}" data-product-category="{{ optional($product->category)->name ?? 'Uncategorized' }}" data-product-wattage="{{ $product->wattage }}" data-product-capacity="{{ $product->capacity_ah }}" data-product-voltage="{{ $product->voltage }}" data-product-url="{{ route('product.show', ['id' => $product->id]) }}" />
+                                            Compare
+                                        </label>
+                                    </div>
+                                    <div class="card-actions">
+                                        <button type="button" class="btn btn-add add-to-cart-btn" data-id="{{ $product->id }}" onclick="event.stopPropagation();">Add</button>
+                                        <button type="button" class="btn btn-pay mpesa-pay-btn" data-id="{{ $product->id }}" data-price="{{ $product->price }}" onclick="event.stopPropagation();">Pay</button>
+                                        <button type="button" class="btn btn-secondary quick-view-btn" data-id="{{ $product->id }}" data-name="{{ $product->name }}" data-image="{{ asset($product->image_path) }}" data-price="{{ $product->price }}" data-description="{{ $product->description }}" data-category="{{ optional($product->category)->name ?? 'Uncategorized' }}" data-wattage="{{ $product->wattage }}" data-capacity="{{ $product->capacity_ah }}" data-voltage="{{ $product->voltage }}" data-url="{{ route('product.show', ['id' => $product->id]) }}" onclick="event.stopPropagation();">Quick view</button>
+                                    </div>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
         @endif
     </main>
 
@@ -1961,6 +2199,43 @@
             <button id="drawer-checkout-btn" class="btn btn-primary">Checkout</button>
         </div>
     </aside>
+
+    <aside id="compare-drawer" class="compare-drawer" aria-live="polite">
+        <h4>Compare products</h4>
+        <p class="compare-summary">Select up to 3 items to compare specs side by side.</p>
+        <div id="compare-items" class="compare-list">No items selected yet.</div>
+        <div id="compare-table-container" class="compare-table-container" style="display:none; margin-top:1rem;"></div>
+        <div class="compare-actions">
+            <button id="compare-clear-btn" type="button" class="btn btn-secondary">Clear all</button>
+            <button id="compare-toggle-btn" type="button" class="btn btn-primary">Show comparison</button>
+        </div>
+    </aside>
+
+    <div id="quick-view-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content compare-modal-content" onclick="event.stopPropagation();">
+            <button class="close-modal-x" onclick="closeQuickView()" style="position:absolute; right:1rem; top:1rem; font-size:1.4rem;">&times;</button>
+            <div class="quick-view-grid">
+                <div class="quick-view-image">
+                    <img id="quick-view-image" src="" alt="Quick view product image">
+                </div>
+                <div class="quick-view-copy">
+                    <span class="eyebrow">Quick View</span>
+                    <h3 id="quick-view-title"></h3>
+                    <p id="quick-view-category" class="detail-meta" style="margin-top:0.25rem;"></p>
+                    <div class="detail-price" id="quick-view-price" style="margin-top:0.75rem; font-size:1.6rem;"></div>
+                    <p id="quick-view-desc" class="product-desc" style="margin-top:1rem;"></p>
+                    <table class="spec-table" id="quick-view-specs">
+                        <tbody></tbody>
+                    </table>
+                    <div class="detail-actions" style="margin-top:1rem;">
+                        <button id="quick-view-add-btn" type="button" class="btn btn-primary">Add to cart</button>
+                        <button id="quick-view-pay-btn" type="button" class="btn btn-pay">Pay with M-Pesa</button>
+                        <button id="quick-view-detail-btn" type="button" class="btn btn-secondary">View details</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="auth-modal" class="modal-overlay" style="display:none;">
         <div class="modal-content auth-modal-content" style="max-width:900px; display:grid; grid-template-columns:1fr 1fr; gap:1rem; padding:1rem;" onclick="event.stopPropagation()">
@@ -2633,38 +2908,257 @@
                 });
             });
 
+            const compareDrawer = document.getElementById('compare-drawer');
+            const compareItemsContainer = document.getElementById('compare-items');
+            const compareTableContainer = document.getElementById('compare-table-container');
+            const compareClearBtn = document.getElementById('compare-clear-btn');
+            const compareToggleBtn = document.getElementById('compare-toggle-btn');
+            const quickViewModal = document.getElementById('quick-view-modal');
+            const quickViewImage = document.getElementById('quick-view-image');
+            const quickViewTitle = document.getElementById('quick-view-title');
+            const quickViewCategory = document.getElementById('quick-view-category');
+            const quickViewPrice = document.getElementById('quick-view-price');
+            const quickViewDesc = document.getElementById('quick-view-desc');
+            const quickViewSpecsBody = document.querySelector('#quick-view-specs tbody');
+            const quickViewAddBtn = document.getElementById('quick-view-add-btn');
+            const quickViewPayBtn = document.getElementById('quick-view-pay-btn');
+            const quickViewDetailBtn = document.getElementById('quick-view-detail-btn');
+            let compareSelection = {};
+            let currentQuickView = null;
+
+            function renderCompareItems() {
+                const selected = Object.values(compareSelection);
+                compareItemsContainer.innerHTML = '';
+                compareTableContainer.innerHTML = '';
+
+                if (selected.length === 0) {
+                    compareItemsContainer.textContent = 'No items selected yet. Tick Compare on product cards to start.';
+                    compareTableContainer.style.display = 'none';
+                    return;
+                }
+
+                selected.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'compare-item';
+                    row.innerHTML = `
+                        <img src="${item.image}" alt="${item.name}">
+                        <div style="flex:1; min-width:0;">
+                            <strong>${item.name}</strong>
+                            <div style="font-size:0.87rem; color:rgba(255,255,255,0.72); margin-top:0.35rem;">${item.category}</div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" style="min-width:7rem;" data-remove-id="${item.id}">Remove</button>
+                    `;
+                    const removeButton = row.querySelector('[data-remove-id]');
+                    removeButton.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const removeId = this.getAttribute('data-remove-id');
+                        const checkbox = document.querySelector(`.compare-checkbox[data-product-id="${removeId}"]`);
+                        if (checkbox) checkbox.checked = false;
+                        delete compareSelection[removeId];
+                        renderCompareItems();
+                    });
+                    compareItemsContainer.appendChild(row);
+                });
+
+                if (selected.length > 1) {
+                    compareTableContainer.style.display = 'block';
+                    compareTableContainer.innerHTML = '';
+                    const table = document.createElement('table');
+                    table.className = 'spec-table compare-spec-table';
+                    const head = document.createElement('thead');
+                    const headerRow = document.createElement('tr');
+                    headerRow.innerHTML = '<th>Feature</th>' + selected.map(item => `<th>${item.name}</th>`).join('');
+                    head.appendChild(headerRow);
+                    table.appendChild(head);
+                    const rows = [
+                        ['Price', ...selected.map(item => `Ksh ${Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`)],
+                        ['Wattage', ...selected.map(item => item.wattage || '—')],
+                        ['Capacity', ...selected.map(item => item.capacity || '—')],
+                        ['Voltage', ...selected.map(item => item.voltage || '—')],
+                        ['Category', ...selected.map(item => item.category || '—')],
+                        ['Link', ...selected.map(item => `<a href="${item.url}" class="footer-link" style="color:#d6b9ff;">View</a>`)]
+                    ];
+                    const tbody = document.createElement('tbody');
+                    rows.forEach(rowData => {
+                        const rowEl = document.createElement('tr');
+                        rowEl.innerHTML = '<th>' + rowData[0] + '</th>' + rowData.slice(1).map(value => `<td>${value}</td>`).join('');
+                        tbody.appendChild(rowEl);
+                    });
+                    table.appendChild(tbody);
+                    compareTableContainer.appendChild(table);
+                } else {
+                    compareTableContainer.style.display = 'none';
+                }
+            }
+
+            function toggleCompareCheckbox(checkbox) {
+                const id = checkbox.getAttribute('data-product-id');
+                if (!id) return;
+                if (checkbox.checked) {
+                    if (Object.keys(compareSelection).length >= 3) {
+                        checkbox.checked = false;
+                        alert('Compare up to 3 items only. Remove one from the compare drawer to add another.');
+                        return;
+                    }
+                    compareSelection[id] = {
+                        id,
+                        name: checkbox.getAttribute('data-product-name') || 'Product',
+                        image: checkbox.getAttribute('data-product-image') || '',
+                        price: checkbox.getAttribute('data-product-price') || '0.00',
+                        category: checkbox.getAttribute('data-product-category') || 'Uncategorized',
+                        wattage: checkbox.getAttribute('data-product-wattage'),
+                        capacity: checkbox.getAttribute('data-product-capacity'),
+                        voltage: checkbox.getAttribute('data-product-voltage'),
+                        url: checkbox.getAttribute('data-product-url') || '#'
+                    };
+                } else {
+                    delete compareSelection[id];
+                }
+                renderCompareItems();
+            }
+
+            function openQuickView(product) {
+                if (!quickViewModal) return;
+                currentQuickView = product;
+                quickViewImage.src = product.image || '';
+                quickViewImage.alt = product.name || 'Product preview';
+                quickViewTitle.textContent = product.name || 'Product preview';
+                quickViewCategory.textContent = `Category: ${product.category || 'General'}`;
+                quickViewPrice.textContent = `Ksh ${Number(product.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                quickViewDesc.textContent = product.description || 'No description available.';
+                const specs = [
+                    ['Wattage', product.wattage || '—'],
+                    ['Capacity', product.capacity || '—'],
+                    ['Voltage', product.voltage || '—'],
+                    ['Stock', product.stock || 'N/A']
+                ];
+                quickViewSpecsBody.innerHTML = specs.map(spec => `<tr><th>${spec[0]}</th><td>${spec[1]}</td></tr>`).join('');
+                quickViewModal.style.display = 'flex';
+                drawerOverlay.style.display = 'block';
+            }
+
+            function closeQuickView() {
+                if (!quickViewModal) return;
+                quickViewModal.style.display = 'none';
+                if (!cartDrawer.classList.contains('open')) drawerOverlay.style.display = 'none';
+            }
+
+            document.querySelectorAll('.compare-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function(e) {
+                    e.stopPropagation();
+                    toggleCompareCheckbox(this);
+                });
+            });
+
+            compareClearBtn?.addEventListener('click', function() {
+                compareSelection = {};
+                document.querySelectorAll('.compare-checkbox').forEach(checkbox => checkbox.checked = false);
+                renderCompareItems();
+            });
+
+            compareToggleBtn?.addEventListener('click', function() {
+                if (!compareDrawer) return;
+                compareDrawer.classList.toggle('open');
+            });
+
+            document.querySelectorAll('.quick-view-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openQuickView({
+                        id: this.getAttribute('data-id'),
+                        name: this.getAttribute('data-name'),
+                        image: this.getAttribute('data-image'),
+                        price: this.getAttribute('data-price'),
+                        description: this.getAttribute('data-description'),
+                        category: this.getAttribute('data-category'),
+                        wattage: this.getAttribute('data-wattage'),
+                        capacity: this.getAttribute('data-capacity'),
+                        voltage: this.getAttribute('data-voltage'),
+                        url: this.getAttribute('data-url')
+                    });
+                });
+            });
+
+            if (quickViewAddBtn) {
+                quickViewAddBtn.addEventListener('click', function() {
+                    if (!currentQuickView) return;
+                    fetch(`/cart/add/${currentQuickView.id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body: JSON.stringify({})
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            badgeCountVal.textContent = data.cart_count;
+                            closeQuickView();
+                        }
+                    });
+                });
+            }
+
+            if (quickViewPayBtn) {
+                quickViewPayBtn.addEventListener('click', function() {
+                    if (!currentQuickView) return;
+                    openMpesaModal(currentQuickView.id, currentQuickView.price);
+                });
+            }
+
+            if (quickViewDetailBtn) {
+                quickViewDetailBtn.addEventListener('click', function() {
+                    if (!currentQuickView) return;
+                    closeQuickView();
+                    navigateWithLoader(currentQuickView.url);
+                });
+            }
+
+            if (quickViewModal) {
+                quickViewModal.addEventListener('click', function() {
+                    closeQuickView();
+                });
+            }
+
+            renderCompareItems();
+
             const featuredCarousel = document.getElementById('featured-carousel');
             if (featuredCarousel) {
                 const slides = Array.from(featuredCarousel.querySelectorAll('.carousel-slide'));
-                let slideIndex = slides.findIndex(slide => slide.classList.contains('active'));
-                if (slideIndex < 0) slideIndex = 0;
-
-                const nextSlide = () => {
-                    slides[slideIndex].classList.remove('active');
-                    slideIndex = (slideIndex + 1) % slides.length;
-                    slides[slideIndex].classList.add('active');
-                };
-
-                const prevSlide = () => {
-                    slides[slideIndex].classList.remove('active');
-                    slideIndex = (slideIndex - 1 + slides.length) % slides.length;
-                    slides[slideIndex].classList.add('active');
-                };
-
-                let carouselTimer = setInterval(nextSlide, 3800);
-                const resetCarouselTimer = () => {
-                    clearInterval(carouselTimer);
-                    carouselTimer = setInterval(nextSlide, 3800);
-                };
-
-                featuredCarousel.querySelectorAll('.carousel-nav').forEach(control => {
-                    control.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (control.classList.contains('next')) nextSlide();
-                        else prevSlide();
-                        resetCarouselTimer();
+                if (slides.length > 0) {
+                    let slideIndex = slides.findIndex(slide => slide.classList.contains('active'));
+                    if (slideIndex < 0) slideIndex = 0;
+                    slides.forEach((slide, index) => {
+                        if (index !== slideIndex) {
+                            slide.classList.remove('active');
+                        } else {
+                            slide.classList.add('active');
+                        }
                     });
-                });
+
+                    const changeSlide = (nextIndex) => {
+                        if (!slides[slideIndex] || !slides[nextIndex]) return;
+                        slides[slideIndex].classList.remove('active');
+                        slideIndex = nextIndex;
+                        slides[slideIndex].classList.add('active');
+                    };
+
+                    const nextSlide = () => changeSlide((slideIndex + 1) % slides.length);
+                    const prevSlide = () => changeSlide((slideIndex - 1 + slides.length) % slides.length);
+
+                    if (slides.length > 1) {
+                        let carouselTimer = setInterval(nextSlide, 3800);
+                        const resetCarouselTimer = () => {
+                            clearInterval(carouselTimer);
+                            carouselTimer = setInterval(nextSlide, 3800);
+                        };
+
+                        featuredCarousel.querySelectorAll('.carousel-nav').forEach(control => {
+                            control.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                if (control.classList.contains('next')) nextSlide();
+                                else prevSlide();
+                                resetCarouselTimer();
+                            });
+                        });
+                    }
+                }
             }
 
             const heroLoopText = document.querySelectorAll('.hero-loop-text .loop-item');

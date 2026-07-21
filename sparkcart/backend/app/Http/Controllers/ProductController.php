@@ -65,6 +65,7 @@ class ProductController extends Controller
 
         $products = $query->get();
         $searchProducts = Product::with('category')->get();
+        $categories = Category::orderBy('name')->get();
         $cart = session()->get('cart', []);
         $cartTotal = 0;
         $cartCount = 0;
@@ -73,7 +74,7 @@ class ProductController extends Controller
             $cartCount += $item['quantity'];
         }
 
-        return view('shop.index', compact('products', 'searchProducts', 'cart', 'cartTotal', 'cartCount', 'searchQuery', 'productDetail'));
+        return view('shop.index', compact('products', 'searchProducts', 'categories', 'cart', 'cartTotal', 'cartCount', 'searchQuery', 'productDetail'));
     }
 
     public function addToCart(Request $request, $id)
@@ -339,10 +340,27 @@ class ProductController extends Controller
         }
 
         $accountReference = '9906877'; // Your unique bank payment identifier (STEVEN)
-        $transactionDesc  = 'Sparkcart Checkout Payment';
+        $transactionDesc  = 'SparkcartPay';
         $callbackUrl = config('mpesa.callbacks.callback_url') ?: url('/mpesa/callback');
 
         if (! config('mpesa.enabled')) {
+            // Save a simulated payment record for local debugging and customer flow testing.
+            Payment::create([
+                'status' => 'pending',
+                'phone_number' => $phone,
+                'amount' => $amount,
+                'account_reference' => $accountReference,
+                'transaction_desc' => $transactionDesc,
+                'callback_payload' => [
+                    'request' => [
+                        'cart' => $cart,
+                        'amount' => $amount,
+                        'phone' => $phone,
+                        'order_reference' => $accountReference,
+                    ],
+                ],
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'M-Pesa STK push simulated. Configure Daraja credentials and enable `MPESA_ENABLED` to perform live payments.',
@@ -351,23 +369,53 @@ class ProductController extends Controller
             ]);
         }
 
+        $pendingPayment = Payment::create([
+            'status' => 'pending',
+            'phone_number' => $phone,
+            'amount' => $amount,
+            'account_reference' => $accountReference,
+            'transaction_desc' => $transactionDesc,
+            'callback_payload' => [
+                'request' => [
+                    'cart' => $cart,
+                    'amount' => $amount,
+                    'phone' => $phone,
+                    'order_reference' => $accountReference,
+                ],
+            ],
+        ]);
+
         try {
-            $response = Mpesa::stkpush(
+            $response = $this->sendMpesaStkPush(
                 $phone,
                 $amount,
                 $accountReference,
                 $callbackUrl,
-                Mpesa::PAYBILL
+                $transactionDesc
             );
 
             if (! $response->successful()) {
+                Log::error('M-Pesa STK push failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
                 throw new \Exception('M-Pesa request failed: ' . $response->body());
             }
+
+            $responseData = $response->json();
+            $pendingPayment->update([
+                'merchant_request_id' => $responseData['MerchantRequestID'] ?? $responseData['merchantRequestID'] ?? null,
+                'checkout_request_id' => $responseData['CheckoutRequestID'] ?? $responseData['checkoutRequestID'] ?? null,
+                'callback_payload' => array_merge($pendingPayment->callback_payload ?? [], [
+                    'response' => $responseData,
+                ]),
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'STK Push prompt triggered successfully on your mobile screen!',
-                'data' => $response->json(),
+                'data' => $responseData,
             ]);
         } catch (\Throwable $e) {
             Log::error('MPESA STK error: ' . $e->getMessage());
@@ -377,6 +425,32 @@ class ProductController extends Controller
                 'message' => 'Daraja API Connection failure: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    protected function sendMpesaStkPush(string $phone, int $amount, string $accountReference, string $callbackUrl, string $transactionDesc)
+    {
+        $timestamp = date('YmdHis');
+        $url = $this->getMpesaBaseUrl() . '/mpesa/stkpush/v1/processrequest';
+
+        $body = [
+            'BusinessShortCode' => config('mpesa.shortcode'),
+            'Password' => base64_encode(config('mpesa.shortcode') . config('mpesa.passkey') . $timestamp),
+            'Timestamp' => $timestamp,
+            'TransactionType' => Mpesa::PAYBILL,
+            'Amount' => (int) $amount,
+            'PartyA' => $phone,
+            'PartyB' => config('mpesa.shortcode'),
+            'PhoneNumber' => $phone,
+            'CallBackURL' => $callbackUrl,
+            'AccountReference' => $accountReference,
+            'TransactionDesc' => $transactionDesc,
+        ];
+
+        $token = $this->getMpesaAccessToken();
+
+        return Http::withToken($token)
+            ->acceptJson()
+            ->post($url, $body);
     }
 
     protected function getMpesaBaseUrl(): string
@@ -389,12 +463,21 @@ class ProductController extends Controller
     protected function getMpesaAccessToken(): string
     {
         return Cache::remember('mpesa_access_token', 55 * 60, function () {
-            $response = Http::withBasicAuth(
-                config('mpesa.mpesa_consumer_key'),
-                config('mpesa.mpesa_consumer_secret')
-            )->get($this->getMpesaBaseUrl() . '/oauth/v1/generate?grant_type=client_credentials');
+            $consumerKey = config('mpesa.mpesa_consumer_key');
+            $consumerSecret = config('mpesa.mpesa_consumer_secret');
+            $url = $this->getMpesaBaseUrl() . '/oauth/v1/generate?grant_type=client_credentials';
+
+            $response = Http::withBasicAuth($consumerKey, $consumerSecret)
+                ->acceptJson()
+                ->get($url);
 
             if (! $response->successful()) {
+                Log::error('MPESA OAuth token request failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'consumer_key' => $consumerKey,
+                ]);
+
                 throw new \Exception('Failed to retrieve M-Pesa access token: ' . $response->body());
             }
 
@@ -443,21 +526,38 @@ class ProductController extends Controller
                 }
             }
 
-            // Persist a Payment record for reconciliation and debugging
+            $payment = null;
+            if ($merchantRequestId || $checkoutRequestId) {
+                $payment = Payment::where(function ($query) use ($merchantRequestId, $checkoutRequestId) {
+                    if ($checkoutRequestId) {
+                        $query->orWhere('checkout_request_id', $checkoutRequestId);
+                    }
+                    if ($merchantRequestId) {
+                        $query->orWhere('merchant_request_id', $merchantRequestId);
+                    }
+                })->latest()->first();
+            }
+
+            $attributes = [
+                'merchant_request_id' => $merchantRequestId,
+                'checkout_request_id' => $checkoutRequestId,
+                'result_code' => $resultCode,
+                'result_desc' => $resultDesc,
+                'status' => ($resultCode === 0) ? 'success' : 'failed',
+                'phone_number' => $phoneNumber,
+                'amount' => $amount,
+                'account_reference' => $accountReference,
+                'transaction_desc' => $transactionDesc,
+                'callback_payload' => array_merge(is_array($payment?->callback_payload ?? null) ? $payment->callback_payload : [], ['callback' => $payload]),
+                'received_at' => now(),
+            ];
+
             try {
-                Payment::create([
-                    'merchant_request_id' => $merchantRequestId,
-                    'checkout_request_id' => $checkoutRequestId,
-                    'result_code' => $resultCode,
-                    'result_desc' => $resultDesc,
-                    'status' => ($resultCode === 0) ? 'success' : 'failed',
-                    'phone_number' => $phoneNumber,
-                    'amount' => $amount,
-                    'account_reference' => $accountReference,
-                    'transaction_desc' => $transactionDesc,
-                    'callback_payload' => $payload,
-                    'received_at' => now(),
-                ]);
+                if ($payment) {
+                    $payment->update($attributes);
+                } else {
+                    Payment::create($attributes);
+                }
             } catch (\Throwable $e) {
                 Log::error('Failed to persist MPESA callback: ' . $e->getMessage());
             }
@@ -477,6 +577,28 @@ class ProductController extends Controller
         return response()->json([
             'ResultCode' => 0,
             'ResultDesc' => 'Callback data logged and persisted.',
+        ]);
+    }
+
+    public function mpesaStatus($checkoutRequestId)
+    {
+        $payment = Payment::where('checkout_request_id', $checkoutRequestId)
+            ->orWhere('merchant_request_id', $checkoutRequestId)
+            ->latest()
+            ->first();
+
+        if (! $payment) {
+            return response()->json([ 'success' => false, 'message' => 'Payment status not found.' ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => $payment->status,
+            'result_code' => $payment->result_code,
+            'result_desc' => $payment->result_desc,
+            'amount' => $payment->amount,
+            'phone_number' => $payment->phone_number,
+            'updated_at' => $payment->updated_at?->toISOString(),
         ]);
     }
 }

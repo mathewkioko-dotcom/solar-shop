@@ -1,7 +1,7 @@
-FROM php:8.3-cli
+FROM php:8.5-cli
 
 RUN apt-get update \
-    && apt-get install -y git unzip zip libzip-dev && rm -rf /var/lib/apt/lists/* \
+    && apt-get install -y git unzip zip libzip-dev libssl-dev && rm -rf /var/lib/apt/lists/* \
     && docker-php-ext-install pdo_mysql
 
 # Copy composer from the official composer image
