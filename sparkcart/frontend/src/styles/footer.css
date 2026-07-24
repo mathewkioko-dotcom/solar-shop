@@ -1,0 +1,231 @@
+.site-footer {
+    background: #07182e;
+    color: #cbd5e1;
+}
+
+.footer-grid {
+    width: min(calc(100% - 40px), 1400px);
+    margin-inline: auto;
+    padding: 72px 0;
+    display: grid;
+    grid-template-columns: 1.45fr 1fr 1fr 1.1fr;
+    gap: 58px;
+}
+
+.footer-brand {
+    min-width: 0;
+}
+
+.footer-logo {
+    width: 230px;
+    max-width: 100%;
+    height: 70px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #ffffff;
+    object-fit: contain;
+    object-position: left center;
+}
+
+.footer-brand>p {
+    max-width: 390px;
+    margin: 22px 0 0;
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1.75;
+}
+
+.footer-column {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.footer-column h3 {
+    margin: 0 0 22px;
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.footer-column a {
+    display: block;
+    margin-bottom: 13px;
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1.5;
+    text-decoration: none;
+    transition: color 180ms ease;
+}
+
+.footer-column a:hover {
+    color: #ffffff;
+}
+
+.footer-column>p {
+    margin: 0 0 14px;
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.footer-certification {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.footer-certification span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #cbd5e1;
+    font-size: 13px;
+}
+
+/* Social media icons */
+
+.social-links {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.social-link {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 9px;
+    background: transparent;
+    text-decoration: none;
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
+}
+
+.social-link .svg-icon {
+    color: #ffffff;
+}
+
+.social-link:hover {
+    transform: translateY(-3px);
+    border-color: #2d9cdb;
+    background: #2d9cdb;
+}
+
+/* Footer bottom */
+
+.footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-bottom-content {
+    width: min(calc(100% - 40px), 1400px);
+    min-height: 72px;
+    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px;
+}
+
+.footer-bottom-content p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.footer-bottom-links {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.footer-bottom-links a {
+    color: #64748b;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.footer-bottom-links a:hover {
+    color: #ffffff;
+}
+
+/* Floating WhatsApp */
+
+.floating-whatsapp {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: #16a34a;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 14px 32px rgba(22, 163, 74, 0.32);
+    transition:
+        background-color 180ms ease,
+        transform 180ms ease;
+}
+
+.floating-whatsapp:hover {
+    transform: translateY(-3px);
+    background: #15803d;
+}
+
+/* Responsive footer */
+
+@media (max-width: 1050px) {
+    .footer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 48px;
+    }
+}
+
+@media (max-width: 640px) {
+    .footer-grid {
+        width: min(calc(100% - 28px), 1400px);
+        padding: 55px 0;
+        grid-template-columns: 1fr;
+        gap: 38px;
+    }
+
+    .footer-logo {
+        width: 205px;
+    }
+
+    .footer-bottom-content {
+        width: min(calc(100% - 28px), 1400px);
+        padding: 20px 0;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .footer-bottom-links {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .floating-whatsapp {
+        right: 14px;
+        bottom: 14px;
+    }
+}

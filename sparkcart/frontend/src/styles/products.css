@@ -1,0 +1,228 @@
+/* Products */
+
+.products-section {
+    padding: 90px 0;
+    background: var(--background);
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 23px;
+}
+
+.product-card {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #ffffff;
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 50px rgba(15, 45, 82, 0.11);
+}
+
+.product-image-wrapper {
+    position: relative;
+    aspect-ratio: 1 / 0.82;
+    overflow: hidden;
+    background: #ffffff;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.product-image-wrapper>img {
+    width: 100%;
+    height: 100%;
+    padding: 24px;
+    object-fit: contain;
+    transition: transform 240ms ease;
+}
+
+.product-card:hover .product-image-wrapper>img {
+    transform: scale(1.04);
+}
+
+.product-image-fallback {
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #eff6ff, #f8fafc);
+    color: var(--sky-blue);
+}
+
+.product-image-fallback span {
+    font-size: 44px;
+}
+
+.product-image-fallback small {
+    color: var(--muted);
+}
+
+.stock-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    padding: 7px 10px;
+    border-radius: 50px;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.wishlist-button {
+    position: absolute;
+    top: 13px;
+    right: 13px;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--navy);
+    font-size: 21px;
+}
+
+.product-card-content {
+    padding: 20px;
+}
+
+.product-category {
+    margin: 0 0 7px;
+    color: var(--sky-blue);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.product-card h3 {
+    min-height: 48px;
+    margin: 0;
+    color: var(--navy);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.product-rating {
+    margin-top: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.product-rating span {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--solar-orange);
+}
+
+.product-rating small {
+    color: var(--muted);
+}
+
+.product-card-footer {
+    margin-top: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.product-card-footer strong {
+    color: var(--navy);
+    font-size: 18px;
+}
+
+.product-card-footer button {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    background: var(--navy);
+    color: #ffffff;
+}
+
+.products-message {
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 30px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #ffffff;
+    text-align: center;
+}
+
+.products-message strong {
+    color: var(--navy);
+    font-size: 20px;
+}
+
+.products-message span {
+    color: var(--muted);
+}
+
+.error-message strong {
+    color: var(--danger);
+}
+
+.product-skeleton {
+    padding-bottom: 24px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #ffffff;
+}
+
+.skeleton-image,
+.skeleton-line {
+    background: linear-gradient(90deg,
+            #edf2f7 25%,
+            #f8fafc 50%,
+            #edf2f7 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.4s infinite;
+}
+
+.skeleton-image {
+    aspect-ratio: 1 / 0.82;
+}
+
+.skeleton-line {
+    height: 13px;
+    margin: 16px 20px 0;
+    border-radius: 50px;
+}
+
+.skeleton-line-short {
+    width: 35%;
+}
+
+.skeleton-line-medium {
+    width: 63%;
+}
+
+@keyframes skeleton-loading {
+    to {
+        background-position-x: -200%;
+    }
+}
+
+
+/* Product section styles are loaded here. */
