@@ -44,7 +44,9 @@ class ProductApiController extends Controller
                 fn ($query) => $query->where(function ($searchQuery) use ($search) {
                     $searchQuery
                         ->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('description', 'like', '%' . $search . '%');
+                        ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                            $categoryQuery->where('name', 'like', '%' . $search . '%');
+                        });
                 })
             )
             ->when(

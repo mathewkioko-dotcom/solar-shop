@@ -177,6 +177,22 @@ export async function getProducts(filters = {}, signal) {
     .filter((product) => product.slug)
 }
 
+export async function getProductSuggestions(searchTerm, signal) {
+  const search = cleanText(searchTerm)
+  if (!search) return []
+
+  const normalizedSearch = search.toLocaleLowerCase()
+  const products = await getProducts({ search }, signal)
+
+  return products
+    .filter((product) => (
+      product.name.toLocaleLowerCase().includes(normalizedSearch)
+      || product.categoryName.toLocaleLowerCase().includes(normalizedSearch)
+      || product.brandName.toLocaleLowerCase().includes(normalizedSearch)
+    ))
+    .slice(0, 8)
+}
+
 export async function getCategories(signal) {
   let response
   try {
