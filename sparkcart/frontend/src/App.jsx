@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import SiteLayout from './layouts/SiteLayout'
 import HomePage from './pages/Home/HomePage'
+import ProductsPage from './pages/Products/ProductsPage'
 import ProductDetailsPage from './pages/ProductDetails/ProductDetailsPage'
 import './App.css'
 
@@ -24,6 +25,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:slug" element={<ProductDetailsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

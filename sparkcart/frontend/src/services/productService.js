@@ -112,6 +112,110 @@ const normalizeProduct = (payload) => {
   return { ...normalized, mainImageUrl: mainImageUrl || galleryImages[0]?.url || null }
 }
 
+const getProductCandidates = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.products)) return payload.products
+  return null
+}
+
+const parseJsonResponse = async (response, resourceName) => {
+  try {
+    return await response.json()
+  } catch {
+    throw new ProductServiceError(`The ${resourceName} service returned an unreadable response.`)
+  }
+}
+
+export async function getProducts(filters = {}, signal) {
+  const query = new URLSearchParams()
+  const categoryId = Number(filters.categoryId)
+  const minPrice = Number(filters.minPrice)
+  const maxPrice = Number(filters.maxPrice)
+  const search = cleanText(filters.search)
+  const validSorts = new Set(['newest', 'price_asc', 'price_desc', 'name_asc', 'name_desc'])
+
+  if (Number.isInteger(categoryId) && categoryId > 0) {
+    query.set('category_id', String(categoryId))
+  }
+  if (search) query.set('search', search)
+  if (filters.minPrice !== '' && Number.isFinite(minPrice) && minPrice >= 0) {
+    query.set('min_price', String(minPrice))
+  }
+  if (filters.maxPrice !== '' && Number.isFinite(maxPrice) && maxPrice >= 0) {
+    query.set('max_price', String(maxPrice))
+  }
+  if (filters.inStock) query.set('in_stock', '1')
+  query.set('sort', validSorts.has(filters.sort) ? filters.sort : 'newest')
+
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/products?${query}`, {
+      signal,
+      headers: { Accept: 'application/json' },
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    throw new ProductServiceError('Unable to connect to the products service.')
+  }
+
+  if (!response.ok) {
+    throw new ProductServiceError(
+      `The products service returned an error (${response.status}).`,
+      response.status,
+    )
+  }
+
+  const payload = await parseJsonResponse(response, 'products')
+  const candidates = getProductCandidates(payload)
+  if (!candidates) {
+    throw new ProductServiceError('The products service returned an invalid product list.')
+  }
+
+  return candidates
+    .map((candidate) => normalizeProduct(candidate))
+    .filter((product) => product.slug)
+}
+
+export async function getCategories(signal) {
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/categories`, {
+      signal,
+      headers: { Accept: 'application/json' },
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    throw new ProductServiceError('Unable to connect to the categories service.')
+  }
+
+  if (!response.ok) {
+    throw new ProductServiceError(
+      `The categories service returned an error (${response.status}).`,
+      response.status,
+    )
+  }
+
+  const payload = await parseJsonResponse(response, 'categories')
+  const candidates = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : null
+
+  if (!candidates) {
+    throw new ProductServiceError('The categories service returned an invalid category list.')
+  }
+
+  return candidates
+    .map((category) => ({
+      id: category?.id ?? null,
+      name: cleanText(category?.name),
+      slug: cleanText(category?.slug),
+    }))
+    .filter((category) => category.id !== null && category.name && category.slug)
+}
+
 export async function getProductBySlug(slug, signal) {
   const normalizedSlug = cleanText(slug)
   if (!normalizedSlug) {
@@ -184,13 +288,7 @@ export async function getRelatedProducts(categoryId, currentProductId, signal) {
     throw new ProductServiceError('The related products service returned an unreadable response.')
   }
 
-  const candidates = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload?.data)
-      ? payload.data
-      : Array.isArray(payload?.products)
-        ? payload.products
-        : []
+  const candidates = getProductCandidates(payload) || []
 
   return candidates
     .map((candidate) => {
