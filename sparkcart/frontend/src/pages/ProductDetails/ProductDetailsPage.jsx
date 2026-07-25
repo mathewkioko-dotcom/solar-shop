@@ -5,6 +5,7 @@ import ProductGallery from '../../components/product/ProductGallery'
 import ProductSpecifications from '../../components/product/ProductSpecifications'
 import RelatedProducts from '../../components/product/RelatedProducts'
 import { useCart } from '../../hooks/useCart'
+import { useWishlist } from '../../hooks/useWishlist'
 import { getProductBySlug } from '../../services/productService'
 import '../../styles/product-details.css'
 
@@ -62,8 +63,11 @@ function ProductState({ type, message, onRetry }) {
 function PurchaseArea({ product }) {
   const navigate = useNavigate()
   const { addItem, getItemQuantity } = useCart()
+  const { isWishlisted, toggleItem } = useWishlist()
   const [quantity, setQuantity] = useState(1)
   const [cartFeedback, setCartFeedback] = useState('')
+  const [wishlistFeedback, setWishlistFeedback] = useState('')
+  const isProductWishlisted = isWishlisted(product.id)
 
   const isOutOfStock =
     Number.isFinite(product.stock) && product.stock <= 0
@@ -96,6 +100,15 @@ function PurchaseArea({ product }) {
     const wasAdded = addItem(product, quantityToAdd)
     setCartFeedback(wasAdded ? 'Added to cart' : 'This product could not be added to the cart.')
     return wasAdded
+  }
+
+  const toggleWishlist = () => {
+    const wasWishlisted = isProductWishlisted
+    if (!toggleItem(product)) return
+
+    setWishlistFeedback(
+      wasWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
+    )
   }
 
   return (
@@ -149,6 +162,9 @@ function PurchaseArea({ product }) {
       <p className="product-details-page__cart-feedback" role="status" aria-live="polite">
         {cartFeedback}
       </p>
+      <p className="product-details-page__wishlist-feedback" role="status" aria-live="polite">
+        {wishlistFeedback}
+      </p>
 
       <div className="product-details-page__actions">
         <button
@@ -172,11 +188,12 @@ function PurchaseArea({ product }) {
         </button>
 
         <button
-          className="product-details-page__wishlist-button"
+          className={`product-details-page__wishlist-button${isProductWishlisted ? ' product-details-page__wishlist-button--active' : ''}`}
           type="button"
-          disabled={isOutOfStock}
+          aria-pressed={isProductWishlisted}
+          onClick={toggleWishlist}
         >
-          Wishlist
+          {isProductWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
         </button>
       </div>
     </div>

@@ -413,6 +413,14 @@
     font-weight: 700;
 }
 
+.product-details-page .product-details-page__wishlist-feedback {
+    min-height: 22px;
+    margin: 0;
+    color: var(--success);
+    font-size: 13px;
+    font-weight: 700;
+}
+
 .product-details-page .product-details-page__actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -468,6 +476,13 @@
     border-color: #cbd5e1;
     background: #ffffff;
     color: var(--navy);
+}
+
+.product-details-page .product-details-page__wishlist-button--active {
+    border-color: var(--solar-green);
+    background: #ecfdf5;
+    color: #166534;
+    box-shadow: inset 0 0 0 1px var(--solar-green);
 }
 
 .product-details-page .product-details-page__actions button:disabled {
@@ -601,6 +616,7 @@
 }
 
 .product-details-page .product-details-page__related-card {
+    position: relative;
     height: 100%;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -611,6 +627,41 @@
         transform 180ms ease,
         box-shadow 180ms ease,
         border-color 180ms ease;
+}
+
+.products-page .product-details-page__related-card {
+    position: relative;
+}
+
+.product-details-page .product-details-page__related-wishlist,
+.products-page .product-details-page__related-wishlist {
+    position: absolute;
+    z-index: 2;
+    top: 13px;
+    right: 13px;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--navy);
+    box-shadow: 0 7px 18px rgba(15, 45, 82, 0.12);
+}
+
+.product-details-page .product-details-page__related-wishlist--active,
+.products-page .product-details-page__related-wishlist--active {
+    border-color: var(--solar-green);
+    background: var(--solar-green);
+    color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(43, 182, 115, 0.18);
+}
+
+.product-details-page .product-details-page__related-wishlist:focus-visible,
+.products-page .product-details-page__related-wishlist:focus-visible {
+    outline: 3px solid rgba(45, 156, 219, 0.42);
+    outline-offset: 3px;
 }
 
 .product-details-page .product-details-page__related-add,

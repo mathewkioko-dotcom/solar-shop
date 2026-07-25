@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import barakaLogo from '../../assets/logo/baraka-logo.svg'
 import menuIcon from '../../assets/icons/common/menu.svg'
 import searchIcon from '../../assets/icons/common/search.svg'
@@ -8,8 +8,11 @@ import cartIcon from '../../assets/icons/ecommerce/cart.svg'
 import wishlistIcon from '../../assets/icons/ecommerce/wishlist.svg'
 import chevronDownIcon from '../../assets/icons/navigation/chevron-down.svg'
 import { categories } from '../../data/homeData'
+import { useAuth } from '../../hooks/useAuth'
 import { useCart } from '../../hooks/useCart'
+import { useWishlist } from '../../hooks/useWishlist'
 import { getProductSuggestions } from '../../services/productService'
+import '../../styles/auth.css'
 import '../../styles/search-dropdown.css'
 import SvgIcon from '../ui/SvgIcon'
 
@@ -25,12 +28,16 @@ const formatPrice = (price) => {
 
 function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOpen, mobileMenuOpen, setMobileMenuOpen, scrollToSection }) {
   const navigate = useNavigate()
-  const { itemCount } = useCart()
+  const { isAuthenticated, logout, user } = useAuth()
+  const { itemCount: cartItemCount } = useCart()
+  const { itemCount: wishlistItemCount } = useWishlist()
   const searchWrapperRef = useRef(null)
+  const accountWrapperRef = useRef(null)
   const [suggestions, setSuggestions] = useState([])
   const [searchStatus, setSearchStatus] = useState('idle')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const normalizedSearch = searchTerm.trim()
 
   useEffect(() => {
@@ -66,10 +73,26 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
         setIsSearchOpen(false)
         setActiveIndex(-1)
       }
+      if (!accountWrapperRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    const closeAccountMenuWithEscape = (event) => {
+      if (
+        event.key !== 'Escape'
+        || !accountWrapperRef.current?.querySelector('.header-account-dropdown')
+      ) return
+      setAccountMenuOpen(false)
+      accountWrapperRef.current.querySelector('button')?.focus()
     }
 
     document.addEventListener('pointerdown', closeWhenClickingOutside)
-    return () => document.removeEventListener('pointerdown', closeWhenClickingOutside)
+    document.addEventListener('keydown', closeAccountMenuWithEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeWhenClickingOutside)
+      document.removeEventListener('keydown', closeAccountMenuWithEscape)
+    }
   }, [])
 
   const submitSearch = useCallback(() => {
@@ -127,6 +150,13 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
   }, [activeIndex, isSearchOpen, selectSuggestion, suggestions])
 
   const showDropdown = isSearchOpen && Boolean(normalizedSearch)
+  const customerFirstName = user?.firstName || user?.name?.split(/\s+/)[0] || 'Account'
+
+  const signOut = useCallback(async () => {
+    setAccountMenuOpen(false)
+    await logout()
+    navigate('/')
+  }, [logout, navigate])
 
   return <div className="main-header"><div className="container main-header-content">
     <button className="mobile-menu-button" type="button" aria-label="Open navigation" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}><SvgIcon src={menuIcon} size={24} /></button>
@@ -184,7 +214,39 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
         </div>
       )}
     </div>
-    <div className="header-actions"><button className="header-action" type="button"><SvgIcon className="header-action-icon" src={userIcon} size={24} /><span><strong>Sign In</strong><small>My Account</small></span></button><button className="header-action icon-action" type="button"><SvgIcon className="header-action-icon" src={wishlistIcon} size={24} /><span className="action-label">Wishlist</span><span className="action-count">0</span></button><button className="header-action icon-action" type="button" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`} onClick={() => navigate('/cart')}><SvgIcon className="header-action-icon" src={cartIcon} size={24} /><span className="action-label">Cart</span><span className="action-count">{itemCount}</span></button></div>
+    <div className="header-actions">
+      <div className="header-account-wrapper" ref={accountWrapperRef}>
+        <button
+          className="header-action"
+          type="button"
+          aria-expanded={isAuthenticated ? accountMenuOpen : undefined}
+          aria-haspopup={isAuthenticated ? 'menu' : undefined}
+          onClick={() => {
+            if (!isAuthenticated) {
+              navigate('/login')
+              return
+            }
+            setAccountMenuOpen((open) => !open)
+          }}
+        >
+          <SvgIcon className="header-action-icon" src={userIcon} size={24} />
+          <span>
+            <strong>{isAuthenticated ? customerFirstName : 'Sign In'}</strong>
+            <small>My Account</small>
+          </span>
+        </button>
+        {isAuthenticated && accountMenuOpen && (
+          <div className="header-account-dropdown" role="menu" aria-label="Account menu">
+            <Link role="menuitem" to="/account" onClick={() => setAccountMenuOpen(false)}>My Account</Link>
+            <Link role="menuitem" to="/wishlist" onClick={() => setAccountMenuOpen(false)}>Wishlist</Link>
+            <Link role="menuitem" to="/cart" onClick={() => setAccountMenuOpen(false)}>Cart</Link>
+            <button role="menuitem" type="button" onClick={signOut}>Logout</button>
+          </div>
+        )}
+      </div>
+      <button className="header-action icon-action" type="button" aria-label={`Wishlist, ${wishlistItemCount} ${wishlistItemCount === 1 ? 'item' : 'items'}`} onClick={() => navigate('/wishlist')}><SvgIcon className="header-action-icon" src={wishlistIcon} size={24} /><span className="action-label">Wishlist</span><span className="action-count">{wishlistItemCount}</span></button>
+      <button className="header-action icon-action" type="button" aria-label={`Cart, ${cartItemCount} ${cartItemCount === 1 ? 'item' : 'items'}`} onClick={() => navigate('/cart')}><SvgIcon className="header-action-icon" src={cartIcon} size={24} /><span className="action-label">Cart</span><span className="action-count">{cartItemCount}</span></button>
+    </div>
   </div></div>
 }
 

@@ -1,7 +1,9 @@
 import { memo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import shoppingBagIcon from '../../assets/icons/ecommerce/shopping-bag.svg'
+import wishlistIcon from '../../assets/icons/ecommerce/wishlist.svg'
 import { useCart } from '../../hooks/useCart'
+import { useWishlist } from '../../hooks/useWishlist'
 import SvgIcon from '../ui/SvgIcon'
 
 const formatPrice = (price) => {
@@ -16,6 +18,7 @@ const formatPrice = (price) => {
 
 function ProductCard({ product }) {
   const { addItem } = useCart()
+  const { isWishlisted, toggleItem } = useWishlist()
   const [imageFailed, setImageFailed] = useState(false)
   const stockLabel = product.stock === null
     ? 'Availability on request'
@@ -23,10 +26,23 @@ function ProductCard({ product }) {
       ? 'In stock'
       : 'Out of stock'
   const isUnavailable = product.stock !== null && product.stock <= 0
+  const isProductWishlisted = isWishlisted(product.id)
 
   return (
     <li className="product-details-page__related-item">
       <article className="product-details-page__related-card">
+        <button
+          className={`product-details-page__related-wishlist${isProductWishlisted ? ' product-details-page__related-wishlist--active' : ''}`}
+          type="button"
+          aria-pressed={isProductWishlisted}
+          aria-label={`${isProductWishlisted ? 'Remove' : 'Add'} ${product.name} ${isProductWishlisted ? 'from' : 'to'} wishlist`}
+          onClick={(event) => {
+            event.stopPropagation()
+            toggleItem(product)
+          }}
+        >
+          <SvgIcon src={wishlistIcon} size={19} />
+        </button>
         <Link
           className="product-details-page__related-link"
           to={`/products/${encodeURIComponent(product.slug)}`}
