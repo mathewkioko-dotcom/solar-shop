@@ -1,0 +1,268 @@
+/* Responsive */
+
+@media (max-width: 1250px) {
+    .main-header-content {
+        grid-template-columns: 210px 180px minmax(240px, 1fr);
+    }
+
+    .header-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+        padding-bottom: 18px;
+    }
+
+    .category-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .hero-copy {
+        width: 62%;
+    }
+
+    .products-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .brands-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .announcement-content {
+        justify-content: center;
+    }
+
+    .announcement-center,
+    .announcement-content>span:last-child {
+        display: none;
+    }
+
+    .main-header-content {
+        min-height: 84px;
+        grid-template-columns: auto 180px minmax(0, 1fr);
+        gap: 15px;
+    }
+
+    .mobile-menu-button {
+        display: block;
+    }
+
+    .brand-logo img {
+        width: 180px;
+    }
+
+    .header-category-wrapper,
+    .header-actions {
+        display: none;
+    }
+
+    .primary-navigation {
+        display: none;
+    }
+
+    .primary-navigation.mobile-navigation-open {
+        display: block;
+    }
+
+    .navigation-content {
+        padding: 15px 0;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .navigation-content button {
+        height: 48px;
+        justify-content: flex-start;
+        padding-inline: 20px;
+    }
+
+    .hero-section {
+        min-height: 670px;
+    }
+
+    .hero-overlay {
+        background: linear-gradient(90deg,
+                rgba(248, 250, 252, 0.98),
+                rgba(248, 250, 252, 0.87));
+    }
+
+    .hero-copy {
+        width: min(100%, 700px);
+    }
+
+    .hero-benefits {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px 0;
+    }
+
+    .hero-benefits article:nth-child(2) {
+        border-right: 0;
+    }
+
+    .category-grid,
+    .products-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .solutions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .brands-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .benefits-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 35px 0;
+    }
+
+    .benefits-grid article:nth-child(2) {
+        border-right: 0;
+    }
+
+    .newsletter-content {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .footer-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .container {
+        width: min(calc(100% - 28px), var(--container-width));
+    }
+
+    .main-header-content {
+        grid-template-columns: auto 145px minmax(0, 1fr);
+    }
+
+    .brand-logo img {
+        width: 145px;
+    }
+
+    .header-search {
+        grid-template-columns: 1fr 45px;
+    }
+
+    .header-search input {
+        padding-inline: 12px;
+        font-size: 13px;
+    }
+
+    .hero-section {
+        min-height: 720px;
+        align-items: flex-end;
+    }
+
+    .hero-background img {
+        object-position: center;
+    }
+
+    .hero-overlay {
+        background: linear-gradient(180deg,
+                rgba(248, 250, 252, 0.28) 0%,
+                rgba(248, 250, 252, 0.93) 37%,
+                rgba(248, 250, 252, 1) 100%);
+    }
+
+    .hero-copy {
+        padding: 250px 0 55px;
+    }
+
+    .hero-copy h1 {
+        font-size: 41px;
+    }
+
+    .hero-description {
+        font-size: 16px;
+    }
+
+    .hero-benefits {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .hero-benefits article {
+        padding: 4px 12px;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .primary-button,
+    .secondary-button {
+        width: 100%;
+    }
+
+    .categories-section,
+    .products-section,
+    .solutions-section,
+    .brands-section {
+        padding: 70px 0;
+    }
+
+    .category-grid,
+    .products-grid,
+    .brands-grid,
+    .benefits-grid,
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .heading-with-action {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .solution-card {
+        min-height: 450px;
+    }
+
+    .solution-card>div {
+        padding: 35px 27px;
+    }
+
+    .benefits-grid {
+        gap: 26px;
+    }
+
+    .benefits-grid article,
+    .benefits-grid article:first-child,
+    .benefits-grid article:last-child {
+        padding: 0;
+        border-right: 0;
+    }
+
+    .newsletter-form {
+        grid-template-columns: 1fr;
+        gap: 7px;
+        padding: 7px;
+    }
+
+    .newsletter-form button {
+        min-height: 48px;
+    }
+
+    .footer-grid {
+        gap: 42px;
+    }
+
+    .footer-bottom-content {
+        padding: 20px 0;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .footer-bottom-content>div {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+
+@media (max-width: 767px) { .floating-whatsapp { right: 14px; bottom: 14px; max-width: calc(100vw - 28px); } }

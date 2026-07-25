@@ -8,15 +8,17 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('PRAGMA foreign_keys = OFF;');
+        Schema::disableForeignKeyConstraints();
+
+        try {
         DB::table('products')->truncate();
         DB::table('categories')->truncate();
-        DB::statement('PRAGMA foreign_keys = ON;');
 
         $inverters   = Category::create(['name' => 'Hybrid Inverters', 'slug' => 'hybrid-inverters']);
         $batteries   = Category::create(['name' => 'Solar Batteries', 'slug' => 'solar-batteries']);
@@ -135,5 +137,8 @@ class DatabaseSeeder extends Seeder
             'image_path' => 'images/led-street-light.jpg',
             'is_featured' => false
         ]);
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
     }
 }

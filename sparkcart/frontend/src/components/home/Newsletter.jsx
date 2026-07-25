@@ -1,0 +1,2 @@
+function Newsletter() { return <section className="newsletter-section"><div className="container newsletter-content"><div><p>Stay powered and informed</p><h2>Get solar offers, product news and expert advice</h2></div><form className="newsletter-form" onSubmit={(event) => event.preventDefault()}><input type="email" placeholder="Enter your email address" aria-label="Email address" /><button type="submit">Subscribe</button></form></div></section> }
+export default Newsletter

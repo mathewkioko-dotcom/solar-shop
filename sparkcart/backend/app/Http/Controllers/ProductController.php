@@ -14,7 +14,32 @@ use Iankumu\Mpesa\Facades\Mpesa;
 use App\Models\Payment;
 
 class ProductController extends Controller
-{
+{   
+        public function apiIndex()
+    {
+        return response()->json(
+            Product::query()
+                ->with('category')
+                ->get()
+        );
+    }
+    public function showBySlug(string $slug)
+    {
+        $product = Product::with('category')
+            ->where('slug', $slug)
+            ->first();
+
+        if (! $product) {
+            return response()->json([
+                'message' => 'Product not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'product' => $product,
+        ]);
+    }
+
     public function index(Request $request)
     {
         $searchQuery = $request->input('search');
