@@ -405,6 +405,14 @@
     text-align: right;
 }
 
+.product-details-page .product-details-page__cart-feedback {
+    min-height: 22px;
+    margin: 12px 0 0;
+    color: var(--success);
+    font-size: 13px;
+    font-weight: 700;
+}
+
 .product-details-page .product-details-page__actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -605,6 +613,40 @@
         border-color 180ms ease;
 }
 
+.product-details-page .product-details-page__related-add,
+.products-page .product-details-page__related-add {
+    width: calc(100% - 38px);
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 19px 19px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--solar-orange);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.product-details-page .product-details-page__related-add:hover:not(:disabled),
+.products-page .product-details-page__related-add:hover:not(:disabled) {
+    background: #df8e08;
+}
+
+.product-details-page .product-details-page__related-add:disabled,
+.products-page .product-details-page__related-add:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.product-details-page .product-details-page__related-add:focus-visible,
+.products-page .product-details-page__related-add:focus-visible {
+    outline: 3px solid rgba(45, 156, 219, 0.42);
+    outline-offset: 3px;
+}
+
 .product-details-page .product-details-page__related-card:hover {
     transform: translateY(-4px);
     border-color: rgba(45, 156, 219, 0.35);
@@ -614,13 +656,17 @@
 .product-details-page .product-details-page__related-link,
 .product-details-page .product-details-page__related-link:hover {
     min-height: 0;
-    height: 100%;
+    height: auto;
     display: block;
     padding: 0;
     border-radius: 16px;
     background: transparent;
     color: inherit;
     box-shadow: none;
+}
+
+.products-page .product-details-page__related-card > .product-details-page__related-link {
+    height: auto;
 }
 
 .product-details-page .product-details-page__related-link:focus-visible {

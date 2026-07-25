@@ -1,5 +1,8 @@
 import { memo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import shoppingBagIcon from '../../assets/icons/ecommerce/shopping-bag.svg'
+import { useCart } from '../../hooks/useCart'
+import SvgIcon from '../ui/SvgIcon'
 
 const formatPrice = (price) => {
   if (!Number.isFinite(price)) return 'Contact for pricing'
@@ -12,6 +15,7 @@ const formatPrice = (price) => {
 }
 
 function ProductCard({ product }) {
+  const { addItem } = useCart()
   const [imageFailed, setImageFailed] = useState(false)
   const stockLabel = product.stock === null
     ? 'Availability on request'
@@ -61,6 +65,19 @@ function ProductCard({ product }) {
             </div>
           </div>
         </Link>
+        <button
+          className="product-details-page__related-add"
+          type="button"
+          aria-label={`Add ${product.name} to cart`}
+          disabled={isUnavailable}
+          onClick={(event) => {
+            event.stopPropagation()
+            addItem(product, 1)
+          }}
+        >
+          <SvgIcon src={shoppingBagIcon} size={18} />
+          Add to Cart
+        </button>
       </article>
     </li>
   )

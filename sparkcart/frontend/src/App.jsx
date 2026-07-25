@@ -3,6 +3,7 @@ import SiteLayout from './layouts/SiteLayout'
 import HomePage from './pages/Home/HomePage'
 import ProductsPage from './pages/Products/ProductsPage'
 import ProductDetailsPage from './pages/ProductDetails/ProductDetailsPage'
+import CartPage from './pages/Cart/CartPage'
 import './App.css'
 
 function NotFoundPage() {
@@ -27,6 +28,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:slug" element={<ProductDetailsPage />} />
+        <Route path="/cart" element={<CartPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

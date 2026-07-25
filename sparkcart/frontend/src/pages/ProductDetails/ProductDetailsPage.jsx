@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import SiteLayout from '../../layouts/SiteLayout'
 import ProductGallery from '../../components/product/ProductGallery'
 import ProductSpecifications from '../../components/product/ProductSpecifications'
 import RelatedProducts from '../../components/product/RelatedProducts'
+import { useCart } from '../../hooks/useCart'
 import { getProductBySlug } from '../../services/productService'
 import '../../styles/product-details.css'
 
@@ -59,13 +60,19 @@ function ProductState({ type, message, onRetry }) {
 }
 
 function PurchaseArea({ product }) {
+  const navigate = useNavigate()
+  const { addItem, getItemQuantity } = useCart()
   const [quantity, setQuantity] = useState(1)
+  const [cartFeedback, setCartFeedback] = useState('')
 
   const isOutOfStock =
     Number.isFinite(product.stock) && product.stock <= 0
 
+  const quantityLimit =
+    Number.isFinite(product.stock) ? Math.max(0, Math.floor(product.stock)) : 99
+
   const hasReachedStockLimit =
-    Number.isFinite(product.stock) && quantity >= product.stock
+    quantity >= quantityLimit
 
   const increaseQuantity = () => {
     if (hasReachedStockLimit || isOutOfStock) return
@@ -74,6 +81,21 @@ function PurchaseArea({ product }) {
 
   const decreaseQuantity = () => {
     setQuantity((currentQuantity) => Math.max(1, currentQuantity - 1))
+  }
+
+  const addSelectedQuantity = () => {
+    const currentCartQuantity = getItemQuantity(product.id)
+    const remainingQuantity = Math.max(0, quantityLimit - currentCartQuantity)
+    const quantityToAdd = Math.min(quantity, remainingQuantity)
+
+    if (isOutOfStock || quantityToAdd < 1) {
+      setCartFeedback('Maximum available quantity is already in your cart.')
+      return false
+    }
+
+    const wasAdded = addItem(product, quantityToAdd)
+    setCartFeedback(wasAdded ? 'Added to cart' : 'This product could not be added to the cart.')
+    return wasAdded
   }
 
   return (
@@ -120,16 +142,20 @@ function PurchaseArea({ product }) {
         <p className="product-details-page__purchase-status">
           {isOutOfStock
             ? 'Purchasing is unavailable while this item is out of stock.'
-            : 'Ready for future cart integration.'}
+            : `Select up to ${quantityLimit} units, subject to current availability.`}
         </p>
       </div>
 
-      {/* TODO: Connect these controls to cart, checkout, and wishlist services. */}
+      <p className="product-details-page__cart-feedback" role="status" aria-live="polite">
+        {cartFeedback}
+      </p>
+
       <div className="product-details-page__actions">
         <button
           className="product-details-page__add-button"
           type="button"
           disabled={isOutOfStock}
+          onClick={addSelectedQuantity}
         >
           Add to Cart
         </button>
@@ -138,6 +164,9 @@ function PurchaseArea({ product }) {
           className="product-details-page__buy-button"
           type="button"
           disabled={isOutOfStock}
+          onClick={() => {
+            if (addSelectedQuantity()) navigate('/cart')
+          }}
         >
           Buy Now
         </button>

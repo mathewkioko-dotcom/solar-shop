@@ -8,6 +8,7 @@ import cartIcon from '../../assets/icons/ecommerce/cart.svg'
 import wishlistIcon from '../../assets/icons/ecommerce/wishlist.svg'
 import chevronDownIcon from '../../assets/icons/navigation/chevron-down.svg'
 import { categories } from '../../data/homeData'
+import { useCart } from '../../hooks/useCart'
 import { getProductSuggestions } from '../../services/productService'
 import '../../styles/search-dropdown.css'
 import SvgIcon from '../ui/SvgIcon'
@@ -24,6 +25,7 @@ const formatPrice = (price) => {
 
 function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOpen, mobileMenuOpen, setMobileMenuOpen, scrollToSection }) {
   const navigate = useNavigate()
+  const { itemCount } = useCart()
   const searchWrapperRef = useRef(null)
   const [suggestions, setSuggestions] = useState([])
   const [searchStatus, setSearchStatus] = useState('idle')
@@ -182,7 +184,7 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
         </div>
       )}
     </div>
-    <div className="header-actions"><button className="header-action" type="button"><SvgIcon className="header-action-icon" src={userIcon} size={24} /><span><strong>Sign In</strong><small>My Account</small></span></button><button className="header-action icon-action" type="button"><SvgIcon className="header-action-icon" src={wishlistIcon} size={24} /><span className="action-label">Wishlist</span><span className="action-count">0</span></button><button className="header-action icon-action" type="button"><SvgIcon className="header-action-icon" src={cartIcon} size={24} /><span className="action-label">Cart</span><span className="action-count">0</span></button></div>
+    <div className="header-actions"><button className="header-action" type="button"><SvgIcon className="header-action-icon" src={userIcon} size={24} /><span><strong>Sign In</strong><small>My Account</small></span></button><button className="header-action icon-action" type="button"><SvgIcon className="header-action-icon" src={wishlistIcon} size={24} /><span className="action-label">Wishlist</span><span className="action-count">0</span></button><button className="header-action icon-action" type="button" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`} onClick={() => navigate('/cart')}><SvgIcon className="header-action-icon" src={cartIcon} size={24} /><span className="action-label">Cart</span><span className="action-count">{itemCount}</span></button></div>
   </div></div>
 }
 
