@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import SiteLayout from '../../layouts/SiteLayout'
+import ProductGallery from '../../components/product/ProductGallery'
+import ProductSpecifications from '../../components/product/ProductSpecifications'
+import RelatedProducts from '../../components/product/RelatedProducts'
 import { getProductBySlug } from '../../services/productService'
 import '../../styles/product-details.css'
 
@@ -19,32 +22,6 @@ const getStockLabel = (product) => {
   if (product.stock === null) return 'Availability on request'
   if (product.stock > 0) return `${product.stock} in stock`
   return 'Currently out of stock'
-}
-
-function ProductImage({ product }) {
-  const [imageFailed, setImageFailed] = useState(false)
-
-  if (!product.mainImageUrl || imageFailed) {
-    return (
-      <div
-        className="product-details-page__image-placeholder"
-        role="img"
-        aria-label={`${product.name} image unavailable`}
-      >
-        <span>Image unavailable</span>
-        <small>Baraka Solar Shop</small>
-      </div>
-    )
-  }
-
-  return (
-    <img
-      className="product-details-page__image"
-      src={product.mainImageUrl}
-      alt={`${product.name} product image`}
-      onError={() => setImageFailed(true)}
-    />
-  )
 }
 
 function ProductState({ type, message, onRetry }) {
@@ -319,13 +296,10 @@ function ProductDetailsPage() {
               aria-labelledby="product-title"
             >
               <div className="product-details-page__media">
-                <ProductImage
-                  key={
-                    product.mainImageUrl ||
-                    product.id ||
-                    product.slug
-                  }
-                  product={product}
+                <ProductGallery
+                  key={product.id || product.slug || product.name}
+                  images={product.images}
+                  productName={product.name}
                 />
               </div>
 
@@ -428,6 +402,8 @@ function ProductDetailsPage() {
                 </p>
               </article>
 
+              <ProductSpecifications product={product} />
+
               <article
                 className="product-details-page__information-card"
                 aria-labelledby="delivery-information-title"
@@ -464,6 +440,8 @@ function ProductDetailsPage() {
                 </p>
               </article>
             </section>
+
+            <RelatedProducts currentProduct={product} />
           </div>
         )}
       </main>
