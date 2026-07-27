@@ -1,5 +1,15 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import SiteLayout from '../../layouts/SiteLayout'
+
+const getSafeDestination = (value, fallback = '/account') => (
+  typeof value === 'string'
+  && value.startsWith('/')
+  && !value.startsWith('//')
+  && !value.includes('\\')
+    ? value
+    : fallback
+)
 
 function ProtectedRoute({ children, guestOnly = false }) {
   const location = useLocation()
@@ -7,14 +17,16 @@ function ProtectedRoute({ children, guestOnly = false }) {
 
   if (loading) {
     return (
-      <div className="auth-route-status" role="status" aria-live="polite">
-        Restoring your secure session...
-      </div>
+      <SiteLayout>
+        <main className="auth-route-status" role="status" aria-live="polite">
+          Restoring your secure session...
+        </main>
+      </SiteLayout>
     )
   }
 
   if (guestOnly && isAuthenticated) {
-    return <Navigate to="/account" replace />
+    return <Navigate to={getSafeDestination(location.state?.from)} replace />
   }
 
   if (!guestOnly && !isAuthenticated) {
@@ -22,7 +34,7 @@ function ProtectedRoute({ children, guestOnly = false }) {
       <Navigate
         to="/login"
         replace
-        state={{ from: `${location.pathname}${location.search}` }}
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
       />
     )
   }
@@ -31,4 +43,3 @@ function ProtectedRoute({ children, guestOnly = false }) {
 }
 
 export default ProtectedRoute
-

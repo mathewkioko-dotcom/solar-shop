@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,11 +15,14 @@ class ProductApiController extends Controller
     {
         $validated = $request->validate([
             'category_id' => ['nullable', 'integer', 'min:1'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:255'],
             'search' => ['nullable', 'string', 'max:255'],
             'min_price' => ['nullable', 'numeric', 'min:0'],
             'max_price' => ['nullable', 'numeric', 'min:0'],
             'in_stock' => ['nullable', 'in:1,true'],
             'sort' => ['nullable', 'in:newest,price_asc,price_desc,name_asc,name_desc'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         if (
@@ -34,16 +38,39 @@ class ProductApiController extends Controller
         $sort = $validated['sort'] ?? 'newest';
 
         $query = Product::query()
-            ->with('category')
+            ->where('is_active', true)
+            ->with(['category', 'brand', 'specifications', 'images'])
             ->when(
                 isset($validated['category_id']),
                 fn ($query) => $query->where('category_id', $validated['category_id'])
+            )
+            ->when(
+                isset($validated['category']),
+                fn ($query) => $query->whereHas(
+                    'category',
+                    fn ($category) => $category->where('slug', $validated['category'])
+                )
+            )
+            ->when(
+                isset($validated['brand']),
+                fn ($query) => $query->whereHas(
+                    'brand',
+                    fn ($brand) => $brand
+                        ->where('slug', $validated['brand'])
+                        ->where('is_active', true)
+                        ->whereNull('deleted_at')
+                )
             )
             ->when(
                 $search !== '',
                 fn ($query) => $query->where(function ($searchQuery) use ($search) {
                     $searchQuery
                         ->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('sku', 'like', '%' . $search . '%')
+                        ->orWhere('model_number', 'like', '%' . $search . '%')
+                        ->orWhereHas('brand', function ($brandQuery) use ($search) {
+                            $brandQuery->where('name', 'like', '%' . $search . '%');
+                        })
                         ->orWhereHas('category', function ($categoryQuery) use ($search) {
                             $categoryQuery->where('name', 'like', '%' . $search . '%');
                         });
@@ -70,15 +97,18 @@ class ProductApiController extends Controller
             default => $query->latest(),
         };
 
-        $products = $query->get();
+        $products = $query
+            ->when(isset($validated['limit']), fn ($query) => $query->limit($validated['limit']))
+            ->get();
 
-        return response()->json($products);
+        return ProductResource::collection($products)->response();
     }
 
     public function show(string $slug): JsonResponse
     {
         $product = Product::query()
-            ->with('category')
+            ->where('is_active', true)
+            ->with(['category', 'brand', 'specifications', 'images'])
             ->where('slug', $slug)
             ->first();
 
@@ -89,7 +119,7 @@ class ProductApiController extends Controller
         }
 
         return response()->json([
-            'product' => $product,
+            'product' => (new ProductResource($product))->resolve(request()),
         ]);
     }
 }

@@ -1,6 +1,5 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:8000/api'
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '')
-const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '')
+import { API_BASE_URL, BACKEND_BASE_URL } from './apiConfig'
+import { fetchWithTimeout, RequestTimeoutError } from './requestTimeout'
 
 const cleanText = (value) => typeof value === 'string' && value.trim() ? value.trim() : ''
 
@@ -94,6 +93,7 @@ const normalizeProduct = (payload) => {
     categoryId: candidate.category_id ?? null,
     categoryName,
     brandName,
+    brandSlug: cleanText(candidate.brand?.slug),
     description,
     shortDescription,
     price: toFiniteNumber(candidate.price),
@@ -133,12 +133,14 @@ export async function getProducts(filters = {}, signal) {
   const minPrice = Number(filters.minPrice)
   const maxPrice = Number(filters.maxPrice)
   const search = cleanText(filters.search)
+  const brandSlug = cleanText(filters.brandSlug)
   const validSorts = new Set(['newest', 'price_asc', 'price_desc', 'name_asc', 'name_desc'])
 
   if (Number.isInteger(categoryId) && categoryId > 0) {
     query.set('category_id', String(categoryId))
   }
   if (search) query.set('search', search)
+  if (brandSlug) query.set('brand', brandSlug)
   if (filters.minPrice !== '' && Number.isFinite(minPrice) && minPrice >= 0) {
     query.set('min_price', String(minPrice))
   }
@@ -146,16 +148,21 @@ export async function getProducts(filters = {}, signal) {
     query.set('max_price', String(maxPrice))
   }
   if (filters.inStock) query.set('in_stock', '1')
+  const limit = Number(filters.limit)
+  if (Number.isInteger(limit) && limit > 0) query.set('limit', String(Math.min(limit, 100)))
   query.set('sort', validSorts.has(filters.sort) ? filters.sort : 'newest')
 
   let response
   try {
-    response = await fetch(`${API_BASE_URL}/products?${query}`, {
+    response = await fetchWithTimeout(`${API_BASE_URL}/products?${query}`, {
       signal,
       headers: { Accept: 'application/json' },
     })
   } catch (error) {
     if (error?.name === 'AbortError') throw error
+    if (error instanceof RequestTimeoutError) {
+      throw new ProductServiceError('The products service did not respond in time.')
+    }
     throw new ProductServiceError('Unable to connect to the products service.')
   }
 
@@ -177,12 +184,39 @@ export async function getProducts(filters = {}, signal) {
     .filter((product) => product.slug)
 }
 
+export async function getBrands(signal) {
+  let response
+  try {
+    response = await fetchWithTimeout(`${API_BASE_URL}/brands`, {
+      signal,
+      headers: { Accept: 'application/json' },
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    if (error instanceof RequestTimeoutError) {
+      throw new ProductServiceError('The brands service did not respond in time.')
+    }
+    throw new ProductServiceError('Unable to connect to the brands service.')
+  }
+  if (!response.ok) throw new ProductServiceError(`The brands service returned an error (${response.status}).`, response.status)
+  const payload = await parseJsonResponse(response, 'brands')
+  const candidates = Array.isArray(payload) ? payload : payload?.data
+  if (!Array.isArray(candidates)) throw new ProductServiceError('The brands service returned an invalid list.')
+  return candidates.map((brand) => ({
+    id: brand.id,
+    name: cleanText(brand.name),
+    slug: cleanText(brand.slug),
+    logoUrl: resolveImageUrl(brand.logo_url),
+    productsCount: Number(brand.products_count) || 0,
+  })).filter((brand) => brand.id && brand.name && brand.slug)
+}
+
 export async function getProductSuggestions(searchTerm, signal) {
   const search = cleanText(searchTerm)
   if (!search) return []
 
   const normalizedSearch = search.toLocaleLowerCase()
-  const products = await getProducts({ search }, signal)
+  const products = await getProducts({ search, limit: 8 }, signal)
 
   return products
     .filter((product) => (
@@ -196,12 +230,15 @@ export async function getProductSuggestions(searchTerm, signal) {
 export async function getCategories(signal) {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}/categories`, {
+    response = await fetchWithTimeout(`${API_BASE_URL}/categories`, {
       signal,
       headers: { Accept: 'application/json' },
     })
   } catch (error) {
     if (error?.name === 'AbortError') throw error
+    if (error instanceof RequestTimeoutError) {
+      throw new ProductServiceError('The categories service did not respond in time.')
+    }
     throw new ProductServiceError('Unable to connect to the categories service.')
   }
 
@@ -240,12 +277,15 @@ export async function getProductBySlug(slug, signal) {
 
   let response
   try {
-    response = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(normalizedSlug)}`, {
+    response = await fetchWithTimeout(`${API_BASE_URL}/products/${encodeURIComponent(normalizedSlug)}`, {
       signal,
       headers: { Accept: 'application/json' },
     })
   } catch (error) {
     if (error.name === 'AbortError') throw error
+    if (error instanceof RequestTimeoutError) {
+      throw new ProductServiceError('The product service did not respond in time.')
+    }
     throw new ProductServiceError('Unable to connect to the product service. Please check your connection and try again.')
   }
 
@@ -280,13 +320,19 @@ export async function getRelatedProducts(categoryId, currentProductId, signal) {
 
   let response
   try {
-    const query = new URLSearchParams({ category_id: String(normalizedCategoryId) })
-    response = await fetch(`${API_BASE_URL}/products?${query}`, {
+    const query = new URLSearchParams({
+      category_id: String(normalizedCategoryId),
+      limit: '5',
+    })
+    response = await fetchWithTimeout(`${API_BASE_URL}/products?${query}`, {
       signal,
       headers: { Accept: 'application/json' },
     })
   } catch (error) {
     if (error.name === 'AbortError') throw error
+    if (error instanceof RequestTimeoutError) {
+      throw new ProductServiceError('The related products service did not respond in time.')
+    }
     throw new ProductServiceError('Unable to load related products.')
   }
 

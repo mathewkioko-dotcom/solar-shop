@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Support\RegistrationProfiler;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(RegistrationProfiler::class);
     }
 
     /**
@@ -52,6 +53,22 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('auth.reset-password', fn (Request $request): Limit => (
             Limit::perMinute(5)->by($request->ip())
+        ));
+
+        RateLimiter::for('checkout.orders', fn (Request $request): Limit => (
+            Limit::perMinute(10)->by((string) ($request->user()?->id ?? $request->ip()))
+        ));
+
+        RateLimiter::for('guest-orders.show', fn (Request $request): Limit => (
+            Limit::perMinute(20)->by($request->ip())
+        ));
+
+        RateLimiter::for('checkout.recovery', fn (Request $request): Limit => (
+            Limit::perMinute(20)->by((string) ($request->user()?->id ?? $request->ip()))
+        ));
+
+        RateLimiter::for('admin', fn (Request $request): Limit => (
+            Limit::perMinute(120)->by((string) ($request->user()?->id ?? $request->ip()))
         ));
     }
 }

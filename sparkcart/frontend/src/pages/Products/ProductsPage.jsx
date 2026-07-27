@@ -5,13 +5,14 @@ import ProductGrid from '../../components/products/ProductGrid'
 import ProductResultsHeader from '../../components/products/ProductResultsHeader'
 import ProductsEmptyState from '../../components/products/ProductsEmptyState'
 import SiteLayout from '../../layouts/SiteLayout'
-import { getCategories, getProducts } from '../../services/productService'
+import { getBrands, getCategories, getProducts } from '../../services/productService'
 import '../../styles/products-page.css'
 
 const VALID_SORTS = new Set(['newest', 'price_asc', 'price_desc', 'name_asc', 'name_desc'])
 const DEFAULT_FILTERS = {
   search: '',
   categoryId: '',
+  brandSlug: '',
   minPrice: '',
   maxPrice: '',
   inStock: false,
@@ -33,6 +34,7 @@ const readFilters = (queryString) => {
   return {
     search: (params.get('search') || '').trim(),
     categoryId: Number.isInteger(categoryNumber) && categoryNumber > 0 ? String(categoryNumber) : '',
+    brandSlug: (params.get('brand') || '').trim(),
     minPrice: normalizePositiveNumber(params.get('min_price')),
     maxPrice: normalizePositiveNumber(params.get('max_price')),
     inStock: ['1', 'true'].includes((params.get('in_stock') || '').toLowerCase()),
@@ -46,6 +48,7 @@ const createFilterParams = (filters) => {
 
   if (search) params.set('search', search)
   if (filters.categoryId) params.set('category', filters.categoryId)
+  if (filters.brandSlug) params.set('brand', filters.brandSlug)
   if (filters.minPrice !== '') params.set('min_price', filters.minPrice)
   if (filters.maxPrice !== '') params.set('max_price', filters.maxPrice)
   if (filters.inStock) params.set('in_stock', '1')
@@ -59,6 +62,7 @@ function ProductsPage() {
   const queryKey = searchParams.toString()
   const filters = useMemo(() => readFilters(queryKey), [queryKey])
   const [categories, setCategories] = useState([])
+  const [brands, setBrands] = useState([])
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const requestKey = `${queryKey}:${retryCount}`
@@ -77,13 +81,17 @@ function ProductsPage() {
     const controller = new AbortController()
     let active = true
 
-    getCategories(controller.signal)
-      .then((nextCategories) => {
-        if (active) setCategories(nextCategories)
+    Promise.all([getCategories(controller.signal), getBrands(controller.signal)])
+      .then(([nextCategories, nextBrands]) => {
+        if (active) {
+          setCategories(nextCategories)
+          setBrands(nextBrands)
+        }
       })
       .catch((error) => {
         if (!active || error?.name === 'AbortError') return
         setCategories([])
+        setBrands([])
       })
 
     return () => {
@@ -141,6 +149,7 @@ function ProductsPage() {
   const changeSort = useCallback((sort) => {
     setSearchParams(createFilterParams({ ...filters, sort }))
   }, [filters, setSearchParams])
+  const selectedBrand = brands.find((brand) => brand.slug === filters.brandSlug)
 
   return (
     <SiteLayout>
@@ -148,7 +157,7 @@ function ProductsPage() {
         <div className="products-page__container">
           <div className="products-page__intro">
             <p>Baraka Solar Shop</p>
-            <h1>Solar products for every energy need</h1>
+            <h1>{selectedBrand ? `${selectedBrand.name} solar products` : 'Solar products for every energy need'}</h1>
             <span>Explore reliable equipment for homes, businesses, and complete solar installations.</span>
           </div>
 
@@ -157,6 +166,7 @@ function ProductsPage() {
               key={queryKey}
               filters={filters}
               categories={categories}
+              brands={brands}
               isMobileOpen={filtersOpen}
               onApply={applyFilters}
               onClear={clearFilters}

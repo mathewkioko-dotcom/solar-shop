@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\CustomerResource;
 use App\Models\User;
+use App\Support\RegistrationProfiler;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,28 +28,52 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $profiler = app(RegistrationProfiler::class);
 
-        [$user, $plainTextToken] = DB::transaction(function () use ($validated): array {
+        $profiler->start('password_hash');
+        $passwordHash = Hash::make($validated['password']);
+        $profiler->finish('password_hash');
+
+        $profiler->start('transaction_total');
+        [$user, $plainTextToken] = DB::transaction(function () use ($validated, $passwordHash, $profiler): array {
+            $profiler->start('user_insert');
             $user = User::query()->create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'name' => $validated['first_name'].' '.$validated['last_name'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'password' => $passwordHash,
+                'role' => User::ROLE_CUSTOMER,
             ]);
+            $profiler->finish('user_insert');
 
+            $profiler->start('sanctum_token');
             $token = $user->createToken(self::TOKEN_NAME);
+            $profiler->finish('sanctum_token');
 
             return [$user, $token->plainTextToken];
         });
+        $profiler->finish('transaction_total');
+        $profiler->set('transaction_overhead', max(
+            0,
+            $profiler->get('transaction_total')
+                - $profiler->get('user_insert')
+                - $profiler->get('sanctum_token'),
+        ));
 
-        $this->startCookieSession($request, $user);
+        $profiler->start('resource_serialization');
+        $serializedUser = (new CustomerResource($user))->resolve($request);
+        $profiler->finish('resource_serialization');
 
-        return response()->json([
+        $profiler->start('json_response');
+        $response = response()->json([
             'message' => 'Registration completed successfully.',
-            'user' => new CustomerResource($user),
+            'user' => $serializedUser,
             'token' => $plainTextToken,
         ], 201);
+        $profiler->finish('json_response');
+
+        return $response;
     }
 
     public function login(LoginRequest $request): JsonResponse
@@ -156,4 +181,3 @@ class AuthController extends Controller
         $request->session()->regenerate();
     }
 }
-

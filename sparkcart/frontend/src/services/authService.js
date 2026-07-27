@@ -1,20 +1,23 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:8000/api'
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '')
-const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '')
+import { API_BASE_URL } from './apiConfig'
+import { fetchWithTimeout, RequestTimeoutError } from './requestTimeout'
+import { normalizeAuthenticatedUser } from './authUser'
+
 const AUTH_API_BASE_URL = (
   import.meta.env.VITE_AUTH_API_BASE_URL
   || `${API_BASE_URL}/auth`
 ).replace(/\/+$/, '')
 
-const PERSISTENT_TOKEN_KEY = 'baraka_solar_auth_token_v1'
+export const AUTH_REQUEST_TIMEOUT_MS = 30000
+export const AUTH_TOKEN_STORAGE_KEY = 'baraka_solar_auth_token_v1'
 const SESSION_TOKEN_KEY = 'baraka_solar_auth_session_v1'
 
 export class AuthServiceError extends Error {
-  constructor(message, status = 0, errors = {}) {
+  constructor(message, status = 0, errors = {}, code = '') {
     super(message)
     this.name = 'AuthServiceError'
     this.status = status
     this.errors = errors
+    this.code = code
   }
 }
 
@@ -51,66 +54,31 @@ const getBrowserStorage = (name) => {
 export const getStoredAuthToken = () => {
   if (typeof window === 'undefined') return null
 
-  const persistentToken = readStorageValue(
-    getBrowserStorage('localStorage'),
-    PERSISTENT_TOKEN_KEY,
-  )
-  if (persistentToken) return persistentToken
-
   return readStorageValue(
-    getBrowserStorage('sessionStorage'),
-    SESSION_TOKEN_KEY,
+    getBrowserStorage('localStorage'),
+    AUTH_TOKEN_STORAGE_KEY,
   ) || null
 }
 
-export const persistAuthToken = (token, remember = false) => {
+export const persistAuthToken = (token) => {
   if (typeof window === 'undefined') return
 
-  clearStoredAuth()
   const normalizedToken = cleanText(token)
   if (!normalizedToken) return
 
   try {
-    const storage = getBrowserStorage(remember ? 'localStorage' : 'sessionStorage')
-    const key = remember ? PERSISTENT_TOKEN_KEY : SESSION_TOKEN_KEY
-    storage?.setItem(key, normalizedToken)
+    removeStorageValue(getBrowserStorage('sessionStorage'), SESSION_TOKEN_KEY)
+    getBrowserStorage('localStorage')?.setItem(AUTH_TOKEN_STORAGE_KEY, normalizedToken)
   } catch {
-    // Cookie-based Sanctum sessions continue to work when storage is blocked.
+    // Storage may be unavailable in restricted browser environments.
   }
 }
 
 export const clearStoredAuth = () => {
   if (typeof window === 'undefined') return
 
-  removeStorageValue(getBrowserStorage('localStorage'), PERSISTENT_TOKEN_KEY)
+  removeStorageValue(getBrowserStorage('localStorage'), AUTH_TOKEN_STORAGE_KEY)
   removeStorageValue(getBrowserStorage('sessionStorage'), SESSION_TOKEN_KEY)
-}
-
-const getXsrfToken = () => {
-  if (typeof document === 'undefined') return ''
-
-  const cookie = document.cookie
-    .split('; ')
-    .find((entry) => entry.startsWith('XSRF-TOKEN='))
-
-  if (!cookie) return ''
-
-  try {
-    return decodeURIComponent(cookie.slice('XSRF-TOKEN='.length))
-  } catch {
-    return ''
-  }
-}
-
-const primeCsrfCookie = async () => {
-  try {
-    await fetch(`${BACKEND_BASE_URL}/sanctum/csrf-cookie`, {
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-    })
-  } catch {
-    // Personal-access-token APIs do not require the Sanctum SPA cookie.
-  }
 }
 
 const parseResponse = async (response) => {
@@ -127,25 +95,30 @@ const request = async (path, options = {}) => {
   const token = Object.hasOwn(options, 'token')
     ? options.token
     : getStoredAuthToken()
-  const xsrfToken = getXsrfToken()
   const headers = {
     Accept: 'application/json',
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
   }
 
   let response
   try {
-    response = await fetch(`${AUTH_API_BASE_URL}${path}`, {
+    response = await fetchWithTimeout(`${AUTH_API_BASE_URL}${path}`, {
       method: options.method || 'GET',
-      credentials: 'include',
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
-    })
+    }, options.timeoutMs ?? AUTH_REQUEST_TIMEOUT_MS)
   } catch (error) {
     if (error?.name === 'AbortError') throw error
+    if (error instanceof RequestTimeoutError) {
+      throw new AuthServiceError(
+        options.timeoutMessage || 'The authentication service did not respond in time.',
+        0,
+        {},
+        options.timeoutCode || 'AUTH_REQUEST_TIMEOUT',
+      )
+    }
     throw new AuthServiceError('Unable to connect to the authentication service.')
   }
 
@@ -161,35 +134,6 @@ const request = async (path, options = {}) => {
   return payload
 }
 
-const normalizeUser = (payload) => {
-  const candidate = payload?.user ?? payload?.data?.user ?? payload?.data
-  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null
-
-  const id = candidate.id
-  const email = cleanText(candidate.email)
-  const firstName = cleanText(candidate.first_name)
-  const lastName = cleanText(candidate.last_name)
-  const fullName = cleanText(candidate.name)
-    || [firstName, lastName].filter(Boolean).join(' ')
-
-  if (
-    (!Number.isInteger(id) && !cleanText(id))
-    || !email
-    || !fullName
-  ) {
-    return null
-  }
-
-  return {
-    id,
-    name: fullName,
-    firstName: firstName || fullName.split(/\s+/)[0],
-    lastName,
-    email,
-    createdAt: cleanText(candidate.created_at),
-  }
-}
-
 const getToken = (payload) => (
   cleanText(payload?.token)
   || cleanText(payload?.access_token)
@@ -199,7 +143,7 @@ const getToken = (payload) => (
 
 export const refreshAuthenticatedUser = async (token = getStoredAuthToken(), signal) => {
   const payload = await request('/user', { token, signal })
-  const user = normalizeUser(payload)
+  const user = normalizeAuthenticatedUser(payload)
 
   if (!user) {
     throw new AuthServiceError('The authentication service returned an invalid customer session.')
@@ -208,27 +152,26 @@ export const refreshAuthenticatedUser = async (token = getStoredAuthToken(), sig
   return {
     user,
     token,
-    session: token ? 'token' : 'cookie',
+    session: 'token',
   }
 }
 
 export const loginCustomer = async ({ email, password, remember = false }) => {
-  await primeCsrfCookie()
   const payload = await request('/login', {
     method: 'POST',
     token: null,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     body: { email, password, remember },
   })
   const token = getToken(payload)
-  const user = normalizeUser(payload)
+  const user = normalizeAuthenticatedUser(payload)
 
-  if (token) persistAuthToken(token, remember)
-
-  if (user) {
-    return { user, token, session: token ? 'token' : 'cookie' }
+  if (!token || !user) {
+    throw new AuthServiceError('The authentication service returned an invalid login response.')
   }
 
-  return refreshAuthenticatedUser(token)
+  persistAuthToken(token)
+  return { user, token, session: 'token', remember }
 }
 
 export const registerCustomer = async ({
@@ -238,10 +181,12 @@ export const registerCustomer = async ({
   password,
   passwordConfirmation,
 }) => {
-  await primeCsrfCookie()
   const payload = await request('/register', {
     method: 'POST',
     token: null,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    timeoutCode: 'REGISTRATION_OUTCOME_UNKNOWN',
+    timeoutMessage: 'Registration took longer than expected. Your account may already have been created, so please try signing in before registering again.',
     body: {
       first_name: firstName,
       last_name: lastName,
@@ -252,30 +197,26 @@ export const registerCustomer = async ({
     },
   })
   const token = getToken(payload)
-  const user = normalizeUser(payload)
+  const user = normalizeAuthenticatedUser(payload)
 
-  if (token) persistAuthToken(token, true)
-
-  if (user) {
-    return { user, token, session: token ? 'token' : 'cookie' }
+  if (!token || !user) {
+    throw new AuthServiceError('The authentication service returned an invalid registration response.')
   }
 
-  return refreshAuthenticatedUser(token)
+  persistAuthToken(token)
+  return { user, token, session: 'token' }
 }
 
 export const logoutCustomer = async (token = getStoredAuthToken()) => {
-  try {
-    await request('/logout', { method: 'POST', token })
-  } finally {
-    clearStoredAuth()
-  }
+  if (!token) return
+  await request('/logout', { method: 'POST', token })
 }
 
 export const requestPasswordReset = async (email) => {
-  await primeCsrfCookie()
   const payload = await request('/forgot-password', {
     method: 'POST',
     token: null,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     body: { email },
   })
 
@@ -289,10 +230,10 @@ export const resetCustomerPassword = async ({
   password,
   passwordConfirmation,
 }) => {
-  await primeCsrfCookie()
   const payload = await request('/reset-password', {
     method: 'POST',
     token: null,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     body: {
       email,
       token,

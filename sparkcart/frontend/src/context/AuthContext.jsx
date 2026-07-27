@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { AuthContext } from '../hooks/useAuth'
 import {
   clearStoredAuth,
+  AUTH_TOKEN_STORAGE_KEY,
   getStoredAuthToken,
   loginCustomer,
   logoutCustomer,
@@ -13,31 +14,96 @@ import {
 import { AUTH_ACTIONS, authReducer, initialAuthState } from './authReducer'
 
 export function AuthProvider({ children }) {
-  const [state, dispatch] = useReducer(authReducer, initialAuthState)
-  const hasRestored = useRef(false)
+  const [state, dispatch] = useReducer(
+    authReducer,
+    undefined,
+    () => ({
+      ...initialAuthState,
+      loading: Boolean(getStoredAuthToken()),
+    }),
+  )
+  const restorationControllerRef = useRef(null)
 
-  const refreshUser = useCallback(async () => {
-    dispatch({ type: AUTH_ACTIONS.RESTORE_START })
+  const restoreSession = useCallback(async (token, showLoading = true) => {
+    if (!token) {
+      clearStoredAuth()
+      dispatch({ type: AUTH_ACTIONS.LOGOUT })
+      return null
+    }
+
+    restorationControllerRef.current?.abort()
+    const controller = new AbortController()
+    restorationControllerRef.current = controller
+    if (showLoading) dispatch({ type: AUTH_ACTIONS.RESTORE_START })
 
     try {
-      const session = await refreshAuthenticatedUser(getStoredAuthToken())
+      const session = await refreshAuthenticatedUser(token, controller.signal)
+      if (controller.signal.aborted) return null
       dispatch({ type: AUTH_ACTIONS.AUTH_SUCCESS, payload: session })
       return session.user
     } catch (error) {
+      if (controller.signal.aborted) return null
       clearStoredAuth()
       dispatch({
         type: AUTH_ACTIONS.AUTH_FAILURE,
         payload: { message: error?.status === 401 ? '' : error?.message },
       })
       return null
+    } finally {
+      if (restorationControllerRef.current === controller) {
+        restorationControllerRef.current = null
+      }
     }
   }, [])
 
   useEffect(() => {
-    if (hasRestored.current) return
-    hasRestored.current = true
-    refreshUser()
-  }, [refreshUser])
+    const token = getStoredAuthToken()
+    if (!token) return undefined
+
+    const restoreTimer = window.setTimeout(() => {
+      restoreSession(token, false)
+    }, 0)
+
+    return () => window.clearTimeout(restoreTimer)
+  }, [restoreSession])
+
+  useEffect(() => {
+    const invalidate = () => {
+      restorationControllerRef.current?.abort()
+      clearStoredAuth()
+      dispatch({ type: AUTH_ACTIONS.LOGOUT })
+    }
+    window.addEventListener('baraka:auth-invalidated', invalidate)
+    return () => window.removeEventListener('baraka:auth-invalidated', invalidate)
+  }, [])
+
+  useEffect(() => {
+    const synchronizeAuth = (event) => {
+      if (event.key !== AUTH_TOKEN_STORAGE_KEY) {
+        return
+      }
+
+      const token = typeof event.newValue === 'string' ? event.newValue.trim() : ''
+      if (!token) {
+        restorationControllerRef.current?.abort()
+        dispatch({ type: AUTH_ACTIONS.LOGOUT })
+        return
+      }
+
+      restoreSession(token)
+    }
+
+    window.addEventListener('storage', synchronizeAuth)
+    return () => window.removeEventListener('storage', synchronizeAuth)
+  }, [restoreSession])
+
+  useEffect(() => () => {
+    restorationControllerRef.current?.abort()
+  }, [])
+
+  const refreshUser = useCallback(() => (
+    restoreSession(getStoredAuthToken())
+  ), [restoreSession])
 
   const login = useCallback(async (credentials) => {
     const session = await loginCustomer(credentials)
@@ -51,14 +117,15 @@ export function AuthProvider({ children }) {
     return session.user
   }, [])
 
-  const logout = useCallback(async () => {
-    try {
-      await logoutCustomer(state.token)
-    } catch {
-      // Local state must still clear if the server session already expired.
-    } finally {
-      dispatch({ type: AUTH_ACTIONS.LOGOUT })
-    }
+  const logout = useCallback(() => {
+    const token = state.token || getStoredAuthToken()
+    restorationControllerRef.current?.abort()
+    clearStoredAuth()
+    dispatch({ type: AUTH_ACTIONS.LOGOUT })
+
+    logoutCustomer(token).catch(() => {
+      // Local logout remains complete if remote token revocation is unavailable.
+    })
   }, [state.token])
 
   const forgotPassword = useCallback(

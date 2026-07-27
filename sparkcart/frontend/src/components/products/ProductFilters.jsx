@@ -3,6 +3,7 @@ import { memo, useEffect, useMemo, useState } from 'react'
 const EMPTY_FILTERS = {
   search: '',
   categoryId: '',
+  brandSlug: '',
   minPrice: '',
   maxPrice: '',
   inStock: false,
@@ -12,6 +13,7 @@ const EMPTY_FILTERS = {
 function ProductFilters({
   filters,
   categories,
+  brands,
   isMobileOpen,
   onApply,
   onClear,
@@ -23,6 +25,7 @@ function ProductFilters({
   const hasPendingNonSearchFilters = useMemo(
     () => (
       draft.categoryId !== filters.categoryId
+      || draft.brandSlug !== filters.brandSlug
       || draft.minPrice !== filters.minPrice
       || draft.maxPrice !== filters.maxPrice
       || draft.inStock !== filters.inStock
@@ -86,6 +89,19 @@ function ProductFilters({
             placeholder="Panels, batteries, inverters..."
             onChange={(event) => updateField('search', event.target.value)}
           />
+        </label>
+
+        <label className="products-page__field">
+          <span>Brand</span>
+          <select
+            value={draft.brandSlug}
+            onChange={(event) => updateField('brandSlug', event.target.value)}
+          >
+            <option value="">All brands</option>
+            {brands.map((brand) => (
+              <option value={brand.slug} key={brand.id}>{brand.name}</option>
+            ))}
+          </select>
         </label>
 
         <label className="products-page__field">

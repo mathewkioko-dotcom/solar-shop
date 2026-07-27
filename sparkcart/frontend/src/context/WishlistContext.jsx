@@ -42,6 +42,13 @@ export function WishlistProvider({ children }) {
     })
   }, [])
 
+  const removeItems = useCallback((productIds) => {
+    dispatch({
+      type: WISHLIST_ACTIONS.REMOVE_ITEMS,
+      payload: { productIds },
+    })
+  }, [])
+
   const toggleItem = useCallback((product) => {
     const item = normalizeWishlistItem(product)
     if (!item) return false
@@ -71,6 +78,7 @@ export function WishlistProvider({ children }) {
     itemCount,
     addItem,
     removeItem,
+    removeItems,
     toggleItem,
     clearWishlist,
     isWishlisted,
@@ -80,6 +88,7 @@ export function WishlistProvider({ children }) {
     isWishlisted,
     itemCount,
     removeItem,
+    removeItems,
     state.items,
     toggleItem,
   ])
@@ -90,4 +99,3 @@ export function WishlistProvider({ children }) {
     </WishlistContext.Provider>
   )
 }
-

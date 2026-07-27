@@ -110,14 +110,20 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
 
   const handleSearchChange = useCallback((event) => {
     const nextSearch = event.target.value
-    const hasSearch = Boolean(nextSearch.trim())
+    const nextNormalizedSearch = nextSearch.trim()
+    const hasSearch = Boolean(nextNormalizedSearch)
 
     setSearchTerm(nextSearch)
-    setSuggestions([])
-    setSearchStatus(hasSearch ? 'loading' : 'idle')
+    if (!hasSearch) {
+      setSuggestions([])
+      setSearchStatus('idle')
+    } else if (nextNormalizedSearch !== normalizedSearch) {
+      setSuggestions([])
+      setSearchStatus('loading')
+    }
     setIsSearchOpen(hasSearch)
     setActiveIndex(-1)
-  }, [setSearchTerm])
+  }, [normalizedSearch, setSearchTerm])
 
   const handleSearchKeyDown = useCallback((event) => {
     if (event.key === 'Escape') {

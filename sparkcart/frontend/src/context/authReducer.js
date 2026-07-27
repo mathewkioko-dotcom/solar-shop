@@ -22,7 +22,7 @@ export function authReducer(state, action) {
       return {
         user: action.payload.user,
         token: action.payload.token || null,
-        session: action.payload.session || 'cookie',
+        session: action.payload.session || 'token',
         loading: false,
         error: '',
       }
@@ -41,4 +41,3 @@ export function authReducer(state, action) {
       return state
   }
 }
-

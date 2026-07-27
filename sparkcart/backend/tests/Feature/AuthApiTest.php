@@ -16,8 +16,11 @@ class AuthApiTest extends TestCase
 
     private const STRONG_PASSWORD = 'StrongPassword123!';
 
-    public function test_customer_can_register_and_receives_a_token(): void
+    public function test_customer_can_register_without_a_csrf_cookie_and_use_the_returned_token(): void
     {
+        Notification::fake();
+        $startedAt = hrtime(true);
+
         $response = $this->postJson('/api/auth/register', [
             'first_name' => '  Jane  ',
             'last_name' => '  Doe  ',
@@ -25,6 +28,7 @@ class AuthApiTest extends TestCase
             'password' => self::STRONG_PASSWORD,
             'password_confirmation' => self::STRONG_PASSWORD,
         ]);
+        $durationSeconds = (hrtime(true) - $startedAt) / 1_000_000_000;
 
         $response
             ->assertCreated()
@@ -32,15 +36,25 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('user.last_name', 'Doe')
             ->assertJsonPath('user.name', 'Jane Doe')
             ->assertJsonPath('user.email', 'jane@example.com')
+            ->assertJsonPath('user.role', User::ROLE_CUSTOMER)
             ->assertJsonStructure([
                 'message',
-                'user' => ['id', 'first_name', 'last_name', 'name', 'email', 'created_at'],
+                'user' => ['id', 'first_name', 'last_name', 'name', 'email', 'role', 'created_at'],
                 'token',
             ])
             ->assertJsonMissingPath('user.password')
             ->assertJsonMissingPath('user.remember_token');
 
+        $this->assertLessThan(
+            5,
+            $durationSeconds,
+            "Registration took {$durationSeconds} seconds; the hard local limit is 5 seconds.",
+        );
         $this->assertNotEmpty($response->json('token'));
+        $this->withToken($response->json('token'))
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('user.email', 'jane@example.com');
         $this->assertDatabaseHas('users', [
             'first_name' => 'Jane',
             'last_name' => 'Doe',
@@ -51,6 +65,8 @@ class AuthApiTest extends TestCase
             self::STRONG_PASSWORD,
             User::query()->where('email', 'jane@example.com')->value('password'),
         ));
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+        Notification::assertNothingSent();
     }
 
     public function test_duplicate_email_is_rejected(): void
@@ -86,7 +102,7 @@ class AuthApiTest extends TestCase
             ]);
     }
 
-    public function test_customer_can_login_and_obsolete_named_tokens_are_replaced(): void
+    public function test_customer_can_login_without_a_csrf_cookie_and_use_the_returned_token(): void
     {
         $user = User::factory()->create([
             'email' => 'jane@example.com',
@@ -105,11 +121,46 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.email', 'jane@example.com')
+            ->assertJsonPath('user.role', User::ROLE_CUSTOMER)
             ->assertJsonStructure(['message', 'user', 'token']);
 
+        $this->withToken($response->json('token'))
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('user.id', $user->id);
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $obsoleteToken->id]);
         $this->assertDatabaseHas('personal_access_tokens', ['id' => $otherDeviceToken->id]);
         $this->assertDatabaseCount('personal_access_tokens', 2);
+    }
+
+    public function test_admin_role_is_included_in_login_and_authenticated_user_responses(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'admin@example.com',
+            'password' => Hash::make(self::STRONG_PASSWORD),
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        $login = $this->postJson('/api/auth/login', [
+            'email' => $admin->email,
+            'password' => self::STRONG_PASSWORD,
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.id', $admin->id)
+            ->assertJsonPath('user.role', User::ROLE_ADMIN)
+            ->assertJsonStructure([
+                'user' => ['id', 'first_name', 'last_name', 'name', 'email', 'role'],
+                'token',
+            ]);
+
+        $this->withToken($login->json('token'))
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('user.id', $admin->id)
+            ->assertJsonPath('user.role', User::ROLE_ADMIN)
+            ->assertJsonStructure([
+                'user' => ['id', 'first_name', 'last_name', 'name', 'email', 'role'],
+            ]);
     }
 
     public function test_invalid_credentials_return_a_generic_validation_error(): void
@@ -138,6 +189,7 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.email', $user->email)
+            ->assertJsonPath('user.role', User::ROLE_CUSTOMER)
             ->assertJsonMissingPath('user.password')
             ->assertJsonMissingPath('user.remember_token')
             ->assertJsonMissingPath('user.tokens');
@@ -244,4 +296,3 @@ class AuthApiTest extends TestCase
         $this->assertTrue(Hash::check(self::STRONG_PASSWORD, $user->fresh()->password));
     }
 }
-

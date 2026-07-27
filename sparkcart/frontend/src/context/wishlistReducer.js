@@ -6,6 +6,7 @@ import {
 export const WISHLIST_ACTIONS = {
   ADD_ITEM: 'ADD_ITEM',
   REMOVE_ITEM: 'REMOVE_ITEM',
+  REMOVE_ITEMS: 'REMOVE_ITEMS',
   TOGGLE_ITEM: 'TOGGLE_ITEM',
   CLEAR_WISHLIST: 'CLEAR_WISHLIST',
   HYDRATE_WISHLIST: 'HYDRATE_WISHLIST',
@@ -30,6 +31,29 @@ export function wishlistReducer(state, action) {
     case WISHLIST_ACTIONS.REMOVE_ITEM: {
       const items = state.items.filter(
         (item) => String(item.id) !== String(action.payload?.productId),
+      )
+
+      return items.length === state.items.length ? state : { items }
+    }
+
+    case WISHLIST_ACTIONS.REMOVE_ITEMS: {
+      const productIds = Array.isArray(action.payload?.productIds)
+        ? action.payload.productIds
+        : []
+      const normalizedIds = new Set(productIds.reduce((ids, productId) => {
+        if (typeof productId === 'number' && Number.isInteger(productId) && productId > 0) {
+          ids.push(String(productId))
+        } else if (typeof productId === 'string' && productId.trim()) {
+          ids.push(productId.trim())
+        }
+
+        return ids
+      }, []))
+
+      if (normalizedIds.size === 0) return state
+
+      const items = state.items.filter(
+        (item) => !normalizedIds.has(String(item.id).trim()),
       )
 
       return items.length === state.items.length ? state : { items }
@@ -62,4 +86,3 @@ export function wishlistReducer(state, action) {
       return state
   }
 }
-

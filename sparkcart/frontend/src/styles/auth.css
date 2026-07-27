@@ -1,11 +1,12 @@
 .auth-route-status {
-    min-height: 70vh;
+    min-height: max(360px, calc(100dvh - 240px));
     display: grid;
     place-items: center;
-    padding: 40px;
+    padding: 32px;
     background: #f8fafc;
     color: #64748b;
     font-weight: 700;
+    text-align: center;
 }
 
 .auth-page {

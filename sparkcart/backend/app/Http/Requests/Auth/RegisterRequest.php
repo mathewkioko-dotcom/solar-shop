@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Support\RegistrationProfiler;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -15,6 +16,8 @@ class RegisterRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        app(RegistrationProfiler::class)->start('validation');
+
         $this->merge([
             'first_name' => Str::squish((string) $this->input('first_name')),
             'last_name' => Str::squish((string) $this->input('last_name')),
@@ -46,5 +49,9 @@ class RegisterRequest extends FormRequest
             ],
         ];
     }
-}
 
+    protected function passedValidation(): void
+    {
+        app(RegistrationProfiler::class)->finish('validation');
+    }
+}

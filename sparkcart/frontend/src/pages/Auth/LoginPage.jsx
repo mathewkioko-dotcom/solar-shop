@@ -14,6 +14,15 @@ const getFieldMessage = (error, field) => {
   return Array.isArray(message) ? message[0] : message || ''
 }
 
+const getSafeDestination = (value) => (
+  typeof value === 'string'
+  && value.startsWith('/')
+  && !value.startsWith('//')
+  && !value.includes('\\')
+    ? value
+    : '/account'
+)
+
 function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -55,13 +64,7 @@ function LoginPage() {
 
     try {
       await login({ email, password: form.password, remember: form.remember })
-      const requestedPath = location.state?.from
-      navigate(
-        typeof requestedPath === 'string' && requestedPath.startsWith('/')
-          ? requestedPath
-          : '/account',
-        { replace: true },
-      )
+      navigate(getSafeDestination(location.state?.from), { replace: true })
     } catch (error) {
       setErrors({
         email: getFieldMessage(error, 'email'),
@@ -158,4 +161,3 @@ function LoginPage() {
 }
 
 export default LoginPage
-

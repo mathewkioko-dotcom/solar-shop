@@ -15,8 +15,7 @@ function CartSummary() {
   const isEmpty = items.length === 0
 
   const proceedToCheckout = () => {
-    // TODO: Replace this cart destination when the checkout integration is implemented.
-    navigate('/cart')
+    navigate('/checkout')
   }
 
   const confirmClearCart = () => {
@@ -86,4 +85,3 @@ function CartSummary() {
 }
 
 export default CartSummary
-

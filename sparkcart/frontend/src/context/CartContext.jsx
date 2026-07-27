@@ -82,6 +82,7 @@ export function CartProvider({ children }) {
 
   const value = useMemo(() => ({
     items: state.items,
+    isHydrated: true,
     itemCount,
     subtotal,
     addItem,

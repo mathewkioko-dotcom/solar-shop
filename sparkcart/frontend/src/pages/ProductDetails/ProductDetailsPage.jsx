@@ -230,23 +230,10 @@ function ProductDetailsPage() {
   useEffect(() => {
     const controller = new AbortController()
     let active = true
-    let requestTimedOut = false
-
-    const timeoutId = window.setTimeout(() => {
-    requestTimedOut = true
-    controller.abort()
-    }, 30000)
-
-    window.scrollTo({
-      top: 0,
-      behavior: 'auto',
-    })
 
     getProductBySlug(slug, controller.signal)
       .then((nextProduct) => {
         if (!active) return
-
-        window.clearTimeout(timeoutId)
 
         setRequestState({
           key: requestKey,
@@ -258,27 +245,22 @@ function ProductDetailsPage() {
       .catch((error) => {
         if (
           !active ||
-          (error?.name === 'AbortError' && !requestTimedOut)
+          error?.name === 'AbortError'
         ) {
           return
         }
-
-        window.clearTimeout(timeoutId)
 
         setRequestState({
           key: requestKey,
           status: error?.status === 404 ? 'not-found' : 'error',
           product: null,
-          errorMessage: requestTimedOut
-            ? 'The product service did not respond in time. Please try again.'
-            : error?.message ||
-              'The product could not be loaded. Please try again.',
+          errorMessage: error?.message ||
+            'The product could not be loaded. Please try again.',
         })
       })
 
     return () => {
       active = false
-      window.clearTimeout(timeoutId)
       controller.abort()
     }
   }, [slug, requestKey])

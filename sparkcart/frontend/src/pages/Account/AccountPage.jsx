@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import cartIcon from '../../assets/icons/ecommerce/cart.svg'
 import wishlistIcon from '../../assets/icons/ecommerce/wishlist.svg'
@@ -7,6 +8,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
 import SiteLayout from '../../layouts/SiteLayout'
+import { getSavedAddresses } from '../../services/checkoutService'
 import '../../styles/auth.css'
 
 const formatAccountDate = (value) => {
@@ -24,9 +26,22 @@ const formatAccountDate = (value) => {
 
 function AccountPage() {
   const navigate = useNavigate()
-  const { logout, user } = useAuth()
+  const { logout, token, user } = useAuth()
   const { itemCount: cartItemCount } = useCart()
   const { itemCount: wishlistItemCount } = useWishlist()
+  const [addressCount, setAddressCount] = useState(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    getSavedAddresses(token, controller.signal)
+      .then((addresses) => setAddressCount(addresses.length))
+      .catch((error) => {
+        if (error?.name !== 'AbortError') setAddressCount(null)
+      })
+
+    return () => controller.abort()
+  }, [token])
 
   const signOut = async () => {
     await logout()
@@ -103,16 +118,16 @@ function AccountPage() {
                 <small>{cartItemCount === 1 ? 'item in cart' : 'items in cart'}</small>
               </Link>
 
-              <article className="account-page__card account-page__card--placeholder">
+              <Link to="/account/orders" className="account-page__card">
                 <span>Orders</span>
-                <strong>Coming Soon</strong>
-                <small>Order history will appear here.</small>
-              </article>
+                <strong>View Orders</strong>
+                <small>Review your order history and current statuses.</small>
+              </Link>
 
               <article className="account-page__card account-page__card--placeholder">
                 <span>Addresses</span>
-                <strong>Coming Soon</strong>
-                <small>Saved delivery addresses will appear here.</small>
+                <strong>{addressCount ?? '—'}</strong>
+                <small>{addressCount === 1 ? 'saved delivery address' : 'saved delivery addresses'}</small>
               </article>
             </div>
           </section>
@@ -123,4 +138,3 @@ function AccountPage() {
 }
 
 export default AccountPage
-

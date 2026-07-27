@@ -17,8 +17,8 @@ class CustomerResource extends JsonResource
             'last_name' => $this->last_name,
             'name' => $this->name,
             'email' => $this->email,
+            'role' => $this->role,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }
 }
-
