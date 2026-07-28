@@ -6,6 +6,7 @@ import ProductResultsHeader from '../../components/products/ProductResultsHeader
 import ProductsEmptyState from '../../components/products/ProductsEmptyState'
 import SiteLayout from '../../layouts/SiteLayout'
 import { getBrands, getCategories, getProducts } from '../../services/productService'
+import { useToast } from '../../hooks/useToast'
 import '../../styles/products-page.css'
 
 const VALID_SORTS = new Set(['newest', 'price_asc', 'price_desc', 'name_asc', 'name_desc'])
@@ -17,6 +18,7 @@ const DEFAULT_FILTERS = {
   maxPrice: '',
   inStock: false,
   sort: 'newest',
+  solution: '',
 }
 
 const normalizePositiveNumber = (value) => {
@@ -27,18 +29,22 @@ const normalizePositiveNumber = (value) => {
 
 const readFilters = (queryString) => {
   const params = new URLSearchParams(queryString)
-  const category = params.get('category') ?? params.get('category_id')
+  const category = (params.get('category') ?? params.get('category_id') ?? '').trim()
   const categoryNumber = Number(category)
   const sort = params.get('sort')
+  const solution = params.get('solution')
 
   return {
     search: (params.get('search') || '').trim(),
-    categoryId: Number.isInteger(categoryNumber) && categoryNumber > 0 ? String(categoryNumber) : '',
+    categoryId: Number.isInteger(categoryNumber) && categoryNumber > 0
+      ? String(categoryNumber)
+      : /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(category) ? category : '',
     brandSlug: (params.get('brand') || '').trim(),
     minPrice: normalizePositiveNumber(params.get('min_price')),
     maxPrice: normalizePositiveNumber(params.get('max_price')),
     inStock: ['1', 'true'].includes((params.get('in_stock') || '').toLowerCase()),
     sort: VALID_SORTS.has(sort) ? sort : 'newest',
+    solution: ['home', 'commercial'].includes(solution) ? solution : '',
   }
 }
 
@@ -53,11 +59,13 @@ const createFilterParams = (filters) => {
   if (filters.maxPrice !== '') params.set('max_price', filters.maxPrice)
   if (filters.inStock) params.set('in_stock', '1')
   if (filters.sort !== 'newest') params.set('sort', filters.sort)
+  if (filters.solution) params.set('solution', filters.solution)
 
   return params
 }
 
 function ProductsPage() {
+  const { showError } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const queryKey = searchParams.toString()
   const filters = useMemo(() => readFilters(queryKey), [queryKey])
@@ -92,13 +100,14 @@ function ProductsPage() {
         if (!active || error?.name === 'AbortError') return
         setCategories([])
         setBrands([])
+        showError('Filters Unavailable', error?.message || 'Product filters could not be loaded.')
       })
 
     return () => {
       active = false
       controller.abort()
     }
-  }, [])
+  }, [showError])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -116,6 +125,7 @@ function ProductsPage() {
       })
       .catch((error) => {
         if (!active || error?.name === 'AbortError') return
+        showError('Products Unavailable', error?.message || 'Unable to connect to the server. Please try again.')
         setRequestState({
           key: requestKey,
           status: 'error',
@@ -128,7 +138,7 @@ function ProductsPage() {
       active = false
       controller.abort()
     }
-  }, [filters, requestKey])
+  }, [filters, requestKey, showError])
 
   const applyFilters = useCallback((nextFilters) => {
     setSearchParams(createFilterParams(nextFilters))
@@ -150,6 +160,17 @@ function ProductsPage() {
     setSearchParams(createFilterParams({ ...filters, sort }))
   }, [filters, setSearchParams])
   const selectedBrand = brands.find((brand) => brand.slug === filters.brandSlug)
+  const solutionCopy = filters.solution === 'home'
+    ? {
+        title: 'Solar products for home energy needs',
+        description: 'Explore the full catalog with residential planning in mind, from backup power to complete home solar systems.',
+      }
+    : filters.solution === 'commercial'
+      ? {
+          title: 'Solar products for commercial energy needs',
+          description: 'Explore the full catalog for business and commercial planning, with compatibility confirmed for each project.',
+        }
+      : null
 
   return (
     <SiteLayout>
@@ -157,8 +178,8 @@ function ProductsPage() {
         <div className="products-page__container">
           <div className="products-page__intro">
             <p>Baraka Solar Shop</p>
-            <h1>{selectedBrand ? `${selectedBrand.name} solar products` : 'Solar products for every energy need'}</h1>
-            <span>Explore reliable equipment for homes, businesses, and complete solar installations.</span>
+            <h1>{selectedBrand ? `${selectedBrand.name} solar products` : solutionCopy?.title || 'Solar products for every energy need'}</h1>
+            <span>{solutionCopy?.description || 'Explore reliable equipment for homes, businesses, and complete solar installations.'}</span>
           </div>
 
           <div className="products-page__layout">

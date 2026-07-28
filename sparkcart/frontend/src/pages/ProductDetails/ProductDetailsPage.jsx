@@ -6,6 +6,7 @@ import ProductSpecifications from '../../components/product/ProductSpecification
 import RelatedProducts from '../../components/product/RelatedProducts'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import { getProductBySlug } from '../../services/productService'
 import '../../styles/product-details.css'
 
@@ -64,9 +65,8 @@ function PurchaseArea({ product }) {
   const navigate = useNavigate()
   const { addItem, getItemQuantity } = useCart()
   const { isWishlisted, toggleItem } = useWishlist()
+  const { showError, showSuccess, showWarning } = useToast()
   const [quantity, setQuantity] = useState(1)
-  const [cartFeedback, setCartFeedback] = useState('')
-  const [wishlistFeedback, setWishlistFeedback] = useState('')
   const isProductWishlisted = isWishlisted(product.id)
 
   const isOutOfStock =
@@ -93,12 +93,13 @@ function PurchaseArea({ product }) {
     const quantityToAdd = Math.min(quantity, remainingQuantity)
 
     if (isOutOfStock || quantityToAdd < 1) {
-      setCartFeedback('Maximum available quantity is already in your cart.')
+      showWarning('Cart Limit Reached', 'Maximum available quantity is already in your cart.')
       return false
     }
 
     const wasAdded = addItem(product, quantityToAdd)
-    setCartFeedback(wasAdded ? 'Added to cart' : 'This product could not be added to the cart.')
+    if (wasAdded) showSuccess('Added to Cart', `${quantityToAdd} × ${product.name} added to your cart.`)
+    else showError('Cart Update Failed', 'This product could not be added to the cart.')
     return wasAdded
   }
 
@@ -106,8 +107,9 @@ function PurchaseArea({ product }) {
     const wasWishlisted = isProductWishlisted
     if (!toggleItem(product)) return
 
-    setWishlistFeedback(
-      wasWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
+    showSuccess(
+      wasWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist',
+      `${product.name} was ${wasWishlisted ? 'removed from' : 'saved to'} your wishlist.`,
     )
   }
 
@@ -159,13 +161,6 @@ function PurchaseArea({ product }) {
         </p>
       </div>
 
-      <p className="product-details-page__cart-feedback" role="status" aria-live="polite">
-        {cartFeedback}
-      </p>
-      <p className="product-details-page__wishlist-feedback" role="status" aria-live="polite">
-        {wishlistFeedback}
-      </p>
-
       <div className="product-details-page__actions">
         <button
           className="product-details-page__add-button"
@@ -202,6 +197,7 @@ function PurchaseArea({ product }) {
 
 function ProductDetailsPage() {
   const { slug } = useParams()
+  const { showError } = useToast()
 
   const [requestState, setRequestState] = useState({
     key: '',
@@ -250,6 +246,10 @@ function ProductDetailsPage() {
           return
         }
 
+        showError(
+          error?.status === 404 ? 'Product Not Found' : 'Product Unavailable',
+          error?.message || 'Unable to connect to the server. Please try again.',
+        )
         setRequestState({
           key: requestKey,
           status: error?.status === 404 ? 'not-found' : 'error',
@@ -263,7 +263,7 @@ function ProductDetailsPage() {
       active = false
       controller.abort()
     }
-  }, [slug, requestKey])
+  }, [slug, requestKey, showError])
 
   const categoryName =
     product?.categoryName || 'Solar equipment'

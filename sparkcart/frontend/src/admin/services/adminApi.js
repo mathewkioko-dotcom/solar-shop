@@ -61,7 +61,7 @@ const multipartRequest = async (path, formData, method = 'POST', signal) => {
     if (controller.signal.aborted && !signal?.aborted) {
       throw new ApiServiceError('The admin service did not respond in time.', 0, {}, 'REQUEST_TIMEOUT')
     }
-    throw error
+    throw new ApiServiceError('Unable to connect to the server. Please try again.')
   } finally {
     window.clearTimeout(timeout)
     signal?.removeEventListener('abort', abort)

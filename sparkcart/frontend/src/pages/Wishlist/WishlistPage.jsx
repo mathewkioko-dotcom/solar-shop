@@ -3,16 +3,19 @@ import { Link } from 'react-router-dom'
 import EmptyWishlist from '../../components/wishlist/EmptyWishlist'
 import WishlistItem from '../../components/wishlist/WishlistItem'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import '../../styles/wishlist.css'
 
 function WishlistPage() {
   const { clearWishlist, items } = useWishlist()
+  const { showSuccess } = useToast()
   const [isConfirmingClear, setIsConfirmingClear] = useState(false)
 
   const confirmClearWishlist = () => {
     clearWishlist()
     setIsConfirmingClear(false)
+    showSuccess('Wishlist Cleared', 'All saved products were removed from your wishlist.')
   }
 
   return (
@@ -68,4 +71,3 @@ function WishlistPage() {
 }
 
 export default WishlistPage
-

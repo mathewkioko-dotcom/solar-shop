@@ -6,6 +6,7 @@ import starIcon from '../../assets/icons/ecommerce/star.svg'
 import wishlistIcon from '../../assets/icons/ecommerce/wishlist.svg'
 import arrowRightIcon from '../../assets/icons/navigation/arrow-right.svg'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import { getProducts } from '../../services/productService'
 import SvgIcon from '../ui/SvgIcon'
 
@@ -22,6 +23,7 @@ const formatPrice = (value) => {
 
 function FeaturedProducts({ searchTerm }) {
   const { isWishlisted, toggleItem } = useWishlist()
+  const { showError, showSuccess } = useToast()
   const [products, setProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [productError, setProductError] = useState('')
@@ -36,7 +38,9 @@ function FeaturedProducts({ searchTerm }) {
       })
       .catch((error) => {
         if (error?.name !== 'AbortError') {
-          setProductError(error?.message || 'Products could not be loaded.')
+          const message = error?.message || 'Products could not be loaded.'
+          setProductError(message)
+          showError('Featured Products Unavailable', message)
         }
       })
       .finally(() => {
@@ -44,7 +48,7 @@ function FeaturedProducts({ searchTerm }) {
       })
 
     return () => controller.abort()
-  }, [])
+  }, [showError])
 
   const featuredProducts = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -153,11 +157,16 @@ function FeaturedProducts({ searchTerm }) {
                       aria-label={`${isProductWishlisted ? 'Remove' : 'Add'} ${product.name} ${isProductWishlisted ? 'from' : 'to'} wishlist`}
                       onClick={(event) => {
                         event.stopPropagation()
+                        const wasWishlisted = isProductWishlisted
                         toggleItem({
                           ...product,
                           imageUrl: image,
                           categoryName: category,
                         })
+                        showSuccess(
+                          wasWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist',
+                          `${product.name} was ${wasWishlisted ? 'removed from' : 'saved to'} your wishlist.`,
+                        )
                       }}
                     >
                       <SvgIcon src={wishlistIcon} size={20} />

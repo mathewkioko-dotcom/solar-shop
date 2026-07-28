@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from 'react'
+import { useToast } from '../../hooks/useToast'
 
 const EMPTY_FILTERS = {
   search: '',
@@ -20,8 +21,12 @@ function ProductFilters({
   onClose,
   onSearchCommit,
 }) {
+  const { showWarning } = useToast()
   const [draft, setDraft] = useState(filters)
   const [validationError, setValidationError] = useState('')
+  const selectedCategory = categories.find(
+    (category) => String(category.id) === String(draft.categoryId),
+  )?.slug || draft.categoryId
   const hasPendingNonSearchFilters = useMemo(
     () => (
       draft.categoryId !== filters.categoryId
@@ -55,6 +60,7 @@ function ProductFilters({
 
     if (minPrice !== null && maxPrice !== null && maxPrice < minPrice) {
       setValidationError('Maximum price must be greater than or equal to minimum price.')
+      showWarning('Invalid Price Range', 'Maximum price must be greater than or equal to minimum price.')
       return
     }
 
@@ -107,12 +113,12 @@ function ProductFilters({
         <label className="products-page__field">
           <span>Category</span>
           <select
-            value={draft.categoryId}
+            value={selectedCategory}
             onChange={(event) => updateField('categoryId', event.target.value)}
           >
             <option value="">All categories</option>
             {categories.map((category) => (
-              <option value={category.id} key={category.id}>{category.name}</option>
+              <option value={category.slug} key={category.id}>{category.name}</option>
             ))}
           </select>
         </label>

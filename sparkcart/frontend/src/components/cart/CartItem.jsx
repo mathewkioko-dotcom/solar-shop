@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import trashIcon from '../../assets/icons/actions/trash-2.svg'
 import shoppingBagIcon from '../../assets/icons/ecommerce/shopping-bag.svg'
 import { useCart } from '../../hooks/useCart'
+import { useToast } from '../../hooks/useToast'
 import { getCartQuantityLimit } from '../../services/cartStorage'
 import SvgIcon from '../ui/SvgIcon'
 
@@ -14,6 +15,7 @@ const formatPrice = (price) => (
 
 function CartItem({ item }) {
   const { removeItem, setQuantity } = useCart()
+  const { showSuccess } = useToast()
   const [imageFailed, setImageFailed] = useState(false)
   const quantityLimit = getCartQuantityLimit(item.stock)
   const productPath = `/products/${encodeURIComponent(item.slug)}`
@@ -75,7 +77,10 @@ function CartItem({ item }) {
         className="cart-page__remove"
         type="button"
         aria-label={`Remove ${item.name} from cart`}
-        onClick={() => removeItem(item.id)}
+        onClick={() => {
+          removeItem(item.id)
+          showSuccess('Removed from Cart', `${item.name} was removed from your cart.`)
+        }}
       >
         <SvgIcon src={trashIcon} size={19} />
       </button>
@@ -84,4 +89,3 @@ function CartItem({ item }) {
 }
 
 export default memo(CartItem)
-

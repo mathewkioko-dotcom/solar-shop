@@ -130,6 +130,7 @@ const parseJsonResponse = async (response, resourceName) => {
 export async function getProducts(filters = {}, signal) {
   const query = new URLSearchParams()
   const categoryId = Number(filters.categoryId)
+  const categorySlug = cleanText(filters.categoryId)
   const minPrice = Number(filters.minPrice)
   const maxPrice = Number(filters.maxPrice)
   const search = cleanText(filters.search)
@@ -138,6 +139,8 @@ export async function getProducts(filters = {}, signal) {
 
   if (Number.isInteger(categoryId) && categoryId > 0) {
     query.set('category_id', String(categoryId))
+  } else if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(categorySlug)) {
+    query.set('category', categorySlug)
   }
   if (search) query.set('search', search)
   if (brandSlug) query.set('brand', brandSlug)

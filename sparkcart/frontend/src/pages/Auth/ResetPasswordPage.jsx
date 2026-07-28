@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import eyeIcon from '../../assets/icons/actions/eye.svg'
 import eyeOffIcon from '../../assets/icons/actions/eye-off.svg'
 import SvgIcon from '../../components/ui/SvgIcon'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import '../../styles/auth.css'
 
@@ -14,7 +15,7 @@ function ResetPasswordPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { resetPassword } = useAuth()
-  const messageRef = useRef(null)
+  const { showError, showSuccess, showWarning } = useToast()
   const token = searchParams.get('token') || ''
   const [form, setForm] = useState({
     email: searchParams.get('email') || '',
@@ -22,19 +23,13 @@ function ResetPasswordPage() {
     passwordConfirmation: '',
   })
   const [errors, setErrors] = useState({})
-  const [status, setStatus] = useState({ type: '', message: '' })
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  useEffect(() => {
-    if (status.message) messageRef.current?.focus()
-  }, [status])
 
   const updateField = (event) => {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
     setErrors((current) => ({ ...current, [name]: '' }))
-    setStatus({ type: '', message: '' })
   }
 
   const submitReset = async (event) => {
@@ -53,7 +48,7 @@ function ResetPasswordPage() {
 
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
-      setStatus({ type: 'error', message: nextErrors.token || 'Review the highlighted fields.' })
+      showWarning('Review Password Details', nextErrors.token || 'Review the highlighted fields.')
       return
     }
 
@@ -66,7 +61,7 @@ function ResetPasswordPage() {
         password: form.password,
         passwordConfirmation: form.passwordConfirmation,
       })
-      setStatus({ type: 'success', message })
+      showSuccess('Password Reset', message)
       window.setTimeout(() => navigate('/login', { replace: true }), 1200)
     } catch (error) {
       const backendErrors = error?.errors || {}
@@ -74,7 +69,7 @@ function ResetPasswordPage() {
         email: Array.isArray(backendErrors.email) ? backendErrors.email[0] : backendErrors.email || '',
         password: Array.isArray(backendErrors.password) ? backendErrors.password[0] : backendErrors.password || '',
       })
-      setStatus({ type: 'error', message: error?.message || 'Your password could not be reset.' })
+      showError('Password Reset Failed', error?.message || 'Your password could not be reset.')
     } finally {
       setSubmitting(false)
     }
@@ -91,12 +86,6 @@ function ResetPasswordPage() {
           </div>
 
           <form className="auth-page__form" noValidate onSubmit={submitReset}>
-            {status.message && (
-              <div className={`auth-page__message auth-page__message--${status.type}`} ref={messageRef} role={status.type === 'error' ? 'alert' : 'status'} tabIndex="-1">
-                {status.message}
-              </div>
-            )}
-
             <div className="auth-page__field">
               <label htmlFor="reset-email">Email address</label>
               <input id="reset-email" name="email" type="email" autoComplete="email" value={form.email} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? 'reset-email-error' : undefined} onChange={updateField} />
@@ -133,4 +122,3 @@ function ResetPasswordPage() {
 }
 
 export default ResetPasswordPage
-

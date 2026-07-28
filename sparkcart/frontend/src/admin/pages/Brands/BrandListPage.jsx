@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ConfirmDialog, EmptyState, ErrorState, LoadingState, PageHeader, Pagination, StatusBadge } from '../../components/AdminUI'
-import { useAdminNotifications } from '../../components/AdminNotifications'
+import { useToast } from '../../../hooks/useToast'
 import { adminBrands, clearAdminCatalogCache } from '../../services/adminApi'
 
 const filters = [['all', 'All'], ['active', 'Active'], ['inactive', 'Inactive'], ['archived', 'Archived']]
@@ -9,15 +9,15 @@ const filters = [['all', 'All'], ['active', 'Active'], ['inactive', 'Inactive'],
 export default function BrandListPage() {
   const [state, setState] = useState({ status: 'loading', brands: [], meta: null, error: '', page: 1, retry: 0, filter: 'all' })
   const [dialog, setDialog] = useState(null)
-  const { notify } = useAdminNotifications()
+  const { showError, showSuccess } = useToast()
 
   useEffect(() => {
     const controller = new AbortController()
     adminBrands.list({ status: state.filter, page: state.page }, controller.signal)
       .then((payload) => setState((current) => ({ ...current, status: 'success', brands: payload.data || [], meta: payload.meta })))
-      .catch((error) => { if (error.name !== 'AbortError') setState((current) => ({ ...current, status: 'error', error: error.message })) })
+      .catch((error) => { if (error.name !== 'AbortError') { setState((current) => ({ ...current, status: 'error', error: error.message })); showError('Brands Unavailable', error.message) } })
     return () => controller.abort()
-  }, [state.filter, state.page, state.retry])
+  }, [showError, state.filter, state.page, state.retry])
 
   const act = async () => {
     const { kind, brand } = dialog
@@ -29,10 +29,10 @@ export default function BrandListPage() {
       if (kind === 'activate') await adminBrands.setActive(brand.id, true)
       if (kind === 'deactivate') await adminBrands.setActive(brand.id, false)
       clearAdminCatalogCache()
-      notify(kind === 'delete' ? 'Brand permanently deleted.' : `Brand ${kind}d.`)
+      showSuccess('Brand Updated', kind === 'delete' ? 'Brand permanently deleted.' : `Brand ${kind}d.`)
       setState((current) => ({ ...current, retry: current.retry + 1 }))
     } catch (error) {
-      notify(error.message, 'error')
+      showError('Brand Update Failed', error.message)
     }
   }
 

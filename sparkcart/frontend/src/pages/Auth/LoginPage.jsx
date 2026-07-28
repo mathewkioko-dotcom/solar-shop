@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import eyeIcon from '../../assets/icons/actions/eye.svg'
 import eyeOffIcon from '../../assets/icons/actions/eye-off.svg'
 import SvgIcon from '../../components/ui/SvgIcon'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import '../../styles/auth.css'
 
@@ -27,16 +28,11 @@ function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
-  const errorRef = useRef(null)
+  const { showError, showSuccess, showWarning } = useToast()
   const [form, setForm] = useState({ email: '', password: '', remember: false })
   const [errors, setErrors] = useState({})
-  const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  useEffect(() => {
-    if (submitError) errorRef.current?.focus()
-  }, [submitError])
 
   const updateField = (event) => {
     const { checked, name, type, value } = event.target
@@ -45,7 +41,6 @@ function LoginPage() {
       [name]: type === 'checkbox' ? checked : value,
     }))
     setErrors((current) => ({ ...current, [name]: '' }))
-    setSubmitError('')
   }
 
   const submitLogin = async (event) => {
@@ -57,20 +52,22 @@ function LoginPage() {
     if (!form.password) nextErrors.password = 'Enter your password.'
 
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      showWarning('Review Sign-In Details', 'Please correct the highlighted fields.')
+      return
+    }
 
     setSubmitting(true)
-    setSubmitError('')
-
     try {
       await login({ email, password: form.password, remember: form.remember })
+      showSuccess('Welcome Back', 'You have signed in successfully.')
       navigate(getSafeDestination(location.state?.from), { replace: true })
     } catch (error) {
       setErrors({
         email: getFieldMessage(error, 'email'),
         password: getFieldMessage(error, 'password'),
       })
-      setSubmitError(error?.message || 'Sign in could not be completed.')
+      showError('Sign In Failed', error?.message || 'Sign in could not be completed.')
     } finally {
       setSubmitting(false)
     }
@@ -87,12 +84,6 @@ function LoginPage() {
           </div>
 
           <form className="auth-page__form" noValidate onSubmit={submitLogin}>
-            {submitError && (
-              <div className="auth-page__error" ref={errorRef} role="alert" tabIndex="-1">
-                {submitError}
-              </div>
-            )}
-
             <div className="auth-page__field">
               <label htmlFor="login-email">Email address</label>
               <input

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import SiteLayout from './layouts/SiteLayout'
 import HomePage from './pages/Home/HomePage'
 import ProductsPage from './pages/Products/ProductsPage'
@@ -15,11 +15,10 @@ import OrdersPage from './pages/Account/OrdersPage'
 import OrderDetailsPage from './pages/Account/OrderDetailsPage'
 import CheckoutPage from './pages/Checkout/CheckoutPage'
 import GuestOrderConfirmationPage from './pages/Checkout/GuestOrderConfirmationPage'
-import PrivacyPolicyPage from './pages/Legal/PrivacyPolicyPage'
-import TermsAndConditionsPage from './pages/Legal/TermsAndConditionsPage'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import RouteScrollRestoration from './components/routing/RouteScrollRestoration'
 import AdminRoute from './admin/components/AdminRoute'
+import { useToast } from './hooks/useToast'
 
 const AdminLayout = lazy(() => import('./admin/layouts/AdminLayout'))
 const AdminDashboard = lazy(() => import('./admin/pages/Dashboard/DashboardPage'))
@@ -29,8 +28,34 @@ const AdminBrands = lazy(() => import('./admin/pages/Brands/BrandListPage'))
 const AdminBrandForm = lazy(() => import('./admin/pages/Brands/BrandFormPage'))
 const AdminCategories = lazy(() => import('./admin/pages/Categories/CategoriesPage'))
 const AdminInventory = lazy(() => import('./admin/pages/Inventory/InventoryPage'))
+const ContactPage = lazy(() => import('./pages/Information/ContactPage'))
+const ShippingInformationPage = lazy(() => import('./pages/Information/ShippingInformationPage'))
+const ReturnsPolicyPage = lazy(() => import('./pages/Information/ReturnsPolicyPage'))
+const WarrantyPage = lazy(() => import('./pages/Information/WarrantyPage'))
+const FaqPage = lazy(() => import('./pages/Information/FaqPage'))
+const PrivacyPolicyPage = lazy(() => import('./pages/Legal/PrivacyPolicyPage'))
+const TermsAndConditionsPage = lazy(() => import('./pages/Legal/TermsAndConditionsPage'))
+
+function InformationPageFallback() {
+  return (
+    <SiteLayout>
+      <main className="information-page">
+        <div className="information-page__container" role="status">Loading customer information…</div>
+      </main>
+    </SiteLayout>
+  )
+}
+
+function LazyInformationPage({ children }) {
+  return <Suspense fallback={<InformationPageFallback />}>{children}</Suspense>
+}
 
 function NotFoundPage() {
+  const { showError } = useToast()
+  useEffect(() => {
+    showError('Page Not Found', 'The page you requested does not exist or may have moved.')
+  }, [showError])
+
   return (
     <SiteLayout>
       <main className="product-details-page">
@@ -38,7 +63,7 @@ function NotFoundPage() {
           <p className="product-details-page__eyebrow">404</p>
           <h1 id="not-found-title">Page Not Found</h1>
           <p>The page you requested does not exist or may have moved.</p>
-          <a className="product-details-page__primary-link" href="/">Return to homepage</a>
+          <Link className="product-details-page__primary-link" to="/">Return to homepage</Link>
         </section>
       </main>
     </SiteLayout>
@@ -82,8 +107,13 @@ function App() {
         <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/order-confirmation/:token" element={<GuestOrderConfirmationPage />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-        <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
+        <Route path="/contact" element={<LazyInformationPage><ContactPage /></LazyInformationPage>} />
+        <Route path="/shipping-information" element={<LazyInformationPage><ShippingInformationPage /></LazyInformationPage>} />
+        <Route path="/returns-policy" element={<LazyInformationPage><ReturnsPolicyPage /></LazyInformationPage>} />
+        <Route path="/warranty" element={<LazyInformationPage><WarrantyPage /></LazyInformationPage>} />
+        <Route path="/faq" element={<LazyInformationPage><FaqPage /></LazyInformationPage>} />
+        <Route path="/privacy-policy" element={<LazyInformationPage><PrivacyPolicyPage /></LazyInformationPage>} />
+        <Route path="/terms-and-conditions" element={<LazyInformationPage><TermsAndConditionsPage /></LazyInformationPage>} />
         <Route path="/account/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
         <Route path="/account/orders/:orderNumber" element={<ProtectedRoute><OrderDetailsPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFoundPage />} />

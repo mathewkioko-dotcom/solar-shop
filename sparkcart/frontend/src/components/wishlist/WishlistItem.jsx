@@ -5,6 +5,7 @@ import shoppingBagIcon from '../../assets/icons/ecommerce/shopping-bag.svg'
 import wishlistIcon from '../../assets/icons/ecommerce/wishlist.svg'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import SvgIcon from '../ui/SvgIcon'
 
 const formatPrice = (price) => (
@@ -16,8 +17,8 @@ const formatPrice = (price) => (
 function WishlistItem({ item }) {
   const { addItem: addCartItem, getItemQuantity } = useCart()
   const { removeItem } = useWishlist()
+  const { showError, showSuccess } = useToast()
   const [imageFailed, setImageFailed] = useState(false)
-  const [cartFeedback, setCartFeedback] = useState('')
   const productPath = `/products/${encodeURIComponent(item.slug)}`
   const cartQuantity = getItemQuantity(item.id)
   const quantityLimit = item.stock === null ? 99 : item.stock
@@ -34,7 +35,8 @@ function WishlistItem({ item }) {
     if (cannotAddToCart) return
 
     const wasAdded = addCartItem(item, 1)
-    setCartFeedback(wasAdded ? 'Added to cart' : 'This product could not be added to the cart.')
+    if (wasAdded) showSuccess('Added to Cart', `${item.name} added to your cart.`)
+    else showError('Cart Update Failed', 'This product could not be added to the cart.')
   }
 
   return (
@@ -80,15 +82,14 @@ function WishlistItem({ item }) {
             </button>
           </div>
 
-          <p className="wishlist-page__feedback" role="status" aria-live="polite">
-            {cartFeedback}
-          </p>
-
           <button
             className="wishlist-page__remove"
             type="button"
             aria-label={`Remove ${item.name} from wishlist`}
-            onClick={() => removeItem(item.id)}
+            onClick={() => {
+              removeItem(item.id)
+              showSuccess('Removed from Wishlist', `${item.name} was removed from your wishlist.`)
+            }}
           >
             <SvgIcon src={trashIcon} size={17} />
             Remove from Wishlist
@@ -100,4 +101,3 @@ function WishlistItem({ item }) {
 }
 
 export default memo(WishlistItem)
-

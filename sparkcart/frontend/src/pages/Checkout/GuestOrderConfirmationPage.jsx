@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import SiteLayout from '../../layouts/SiteLayout'
+import { useToast } from '../../hooks/useToast'
 import { getGuestOrder } from '../../services/checkoutService'
 import { resolveApiImageUrl } from '../../services/apiService'
 import { formatKes } from '../../utils/formatCurrency'
@@ -27,6 +28,7 @@ const formatDate = (value) => {
 function GuestOrderConfirmationPage() {
   const { token } = useParams()
   const location = useLocation()
+  const { showError } = useToast()
   const tokenIsValid = /^[a-f0-9]{64}$/i.test(token || '')
   const initialOrder = tokenIsValid ? location.state?.order || null : null
   const [order, setOrder] = useState(initialOrder)
@@ -36,7 +38,10 @@ function GuestOrderConfirmationPage() {
   )
 
   useEffect(() => {
-    if (!tokenIsValid) return undefined
+    if (!tokenIsValid) {
+      showError('Order Confirmation Unavailable', 'This secure order confirmation link is invalid or unavailable.')
+      return undefined
+    }
 
     const controller = new AbortController()
     getGuestOrder(token, controller.signal)
@@ -51,6 +56,7 @@ function GuestOrderConfirmationPage() {
         if (requestError?.name !== 'AbortError') {
           setOrder(null)
           setError('This secure order confirmation link is invalid or unavailable.')
+          showError('Order Confirmation Unavailable', 'This secure order confirmation link is invalid or unavailable.')
         }
       })
       .finally(() => {
@@ -58,7 +64,7 @@ function GuestOrderConfirmationPage() {
       })
 
     return () => controller.abort()
-  }, [token, tokenIsValid])
+  }, [showError, token, tokenIsValid])
 
   if (loading) {
     return (

@@ -1872,7 +1872,7 @@
                     <button class="setting-menu-item" id="theme-toggle-btn"><span>🌗 Toggle Theme</span> <b id="theme-status-lbl" style="font-size:0.75rem; color:#d6b9ff;">LIGHT</b></button>
                     <hr style="border:none; border-top:1px solid rgba(255,255,255,0.08); margin:0.35rem 0;">
                     @if(session()->has('customer_user'))
-                        <button class="setting-menu-item" onclick="alert('👤 Account Status:\nName: {{ session()->get('customer_user')['name'] }}\nEmail: {{ session()->get('customer_user')['email'] }}')"><span>📋 View Account</span></button>
+                        <button class="setting-menu-item" onclick="window.location.href='{{ route('dashboard') }}'"><span>📋 View Account</span></button>
                         <button class="setting-menu-item" style="color:#ff8ea1;" onclick="document.getElementById('logout-form').submit();"><span>🚪 Log Out</span></button>
                         <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">@csrf</form>
                     @else
@@ -2997,7 +2997,12 @@
                 if (checkbox.checked) {
                     if (Object.keys(compareSelection).length >= 3) {
                         checkbox.checked = false;
-                        alert('Compare up to 3 items only. Remove one from the compare drawer to add another.');
+                        const compareSummary = compareDrawer.querySelector('.compare-summary');
+                        if (compareSummary) {
+                            compareSummary.textContent = 'Compare up to 3 items only. Remove one before adding another.';
+                            compareSummary.setAttribute('role', 'alert');
+                        }
+                        compareDrawer.classList.add('open');
                         return;
                     }
                     compareSelection[id] = {

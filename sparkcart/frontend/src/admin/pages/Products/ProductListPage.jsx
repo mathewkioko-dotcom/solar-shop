@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ProductSummaryTable from '../../components/ProductSummaryTable'
 import { ConfirmDialog, EmptyState, ErrorState, LoadingState, PageHeader, Pagination } from '../../components/AdminUI'
-import { useAdminNotifications } from '../../components/AdminNotifications'
+import { useToast } from '../../../hooks/useToast'
 import { adminProducts, getAdminCatalogs } from '../../services/adminApi'
 
 const allowed = ['search', 'category', 'brand', 'active', 'featured', 'stock_status', 'low_stock', 'archived', 'sort', 'direction', 'page']
@@ -14,7 +14,7 @@ export default function ProductListPage() {
   const [catalogs, setCatalogs] = useState({ brands: [], categories: [] })
   const [state, setState] = useState({ status: 'loading', products: [], meta: null, error: '', retry: 0 })
   const [dialog, setDialog] = useState(null)
-  const { notify } = useAdminNotifications()
+  const { showError, showSuccess } = useToast()
   const updateQuery = useCallback((key, value) => {
     const next = new URLSearchParams(params)
     value ? next.set(key, value) : next.delete(key)
@@ -32,16 +32,18 @@ export default function ProductListPage() {
   }, [query.search, search, updateQuery])
   useEffect(() => {
     const controller = new AbortController()
-    getAdminCatalogs(controller.signal).then(setCatalogs).catch(() => {})
+    getAdminCatalogs(controller.signal).then(setCatalogs).catch((error) => {
+      if (error.name !== 'AbortError') showError('Product Filters Unavailable', error.message)
+    })
     return () => controller.abort()
-  }, [])
+  }, [showError])
   useEffect(() => {
     const controller = new AbortController()
     adminProducts.list({ ...query, per_page: 20 }, controller.signal)
       .then((payload) => setState((current) => ({ ...current, status: 'success', products: payload.data || [], meta: payload.meta, error: '' })))
-      .catch((error) => { if (error.name !== 'AbortError') setState((current) => ({ ...current, status: 'error', error: error.message })) })
+      .catch((error) => { if (error.name !== 'AbortError') { setState((current) => ({ ...current, status: 'error', error: error.message })); showError('Products Unavailable', error.message) } })
     return () => controller.abort()
-  }, [query, state.retry])
+  }, [query, showError, state.retry])
 
   const performAction = async () => {
     const { kind, product } = dialog
@@ -50,9 +52,9 @@ export default function ProductListPage() {
       if (kind === 'archive') await adminProducts.archive(product.id)
       if (kind === 'restore') await adminProducts.restore(product.id)
       if (kind === 'delete') await adminProducts.removePermanently(product.id)
-      notify(kind === 'archive' ? 'Product archived.' : kind === 'restore' ? 'Product restored.' : 'Product permanently deleted.')
+      showSuccess('Product Updated', kind === 'archive' ? 'Product archived.' : kind === 'restore' ? 'Product restored.' : 'Product permanently deleted.')
       setState((current) => ({ ...current, retry: current.retry + 1 }))
-    } catch (error) { notify(error.message, 'error') }
+    } catch (error) { showError('Product Update Failed', error.message) }
   }
 
   const actions = (product) => <div className="admin-row-actions">{!product.archived_at && <Link to={`/admin/products/${product.id}/edit`}>Edit</Link>}{product.archived_at ? <><button type="button" onClick={() => setDialog({ kind: 'restore', product })}>Restore</button><button type="button" className="is-danger" onClick={() => setDialog({ kind: 'delete', product })}>Delete</button></> : <><button type="button" onClick={() => setDialog({ kind: 'archive', product })}>Archive</button><Link to={`/products/${product.slug}`}>View</Link></>}</div>

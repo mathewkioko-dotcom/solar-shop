@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 
 const getSafeDestination = (value, fallback = '/account') => (
@@ -14,6 +16,13 @@ const getSafeDestination = (value, fallback = '/account') => (
 function ProtectedRoute({ children, guestOnly = false }) {
   const location = useLocation()
   const { isAuthenticated, loading } = useAuth()
+  const { showWarning } = useToast()
+
+  useEffect(() => {
+    if (!loading && !guestOnly && !isAuthenticated) {
+      showWarning('Sign In Required', 'Please sign in to access that page.')
+    }
+  }, [guestOnly, isAuthenticated, loading, showWarning])
 
   if (loading) {
     return (

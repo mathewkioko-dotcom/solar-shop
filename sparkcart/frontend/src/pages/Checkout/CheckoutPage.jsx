@@ -7,6 +7,7 @@ import CheckoutSummary from '../../components/checkout/CheckoutSummary'
 import { useAuth } from '../../hooks/useAuth'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import {
   createCheckoutOrder,
@@ -80,7 +81,7 @@ function CheckoutPage() {
   } = useAuth()
   const { clearCart, isHydrated, items, subtotal } = useCart()
   const { removeItems: removeWishlistItems } = useWishlist()
-  const errorRef = useRef(null)
+  const { showError, showInfo, showSuccess, showWarning } = useToast()
   const submissionIdRef = useRef(null)
   const recoverySecretRef = useRef(null)
   if (submissionIdRef.current == null) submissionIdRef.current = createSubmissionId()
@@ -111,15 +112,14 @@ function CheckoutPage() {
     getSavedAddresses(token, controller.signal)
       .then(setSavedAddresses)
       .catch((error) => {
-        if (error?.name !== 'AbortError') setSavedAddresses([])
+        if (error?.name !== 'AbortError') {
+          setSavedAddresses([])
+          showError('Addresses Unavailable', error?.message || 'Saved addresses could not be loaded.')
+        }
       })
 
     return () => controller.abort()
-  }, [isAuthenticated, token])
-
-  useEffect(() => {
-    if (feedback) errorRef.current?.focus()
-  }, [feedback])
+  }, [isAuthenticated, showError, token])
 
   if (!isHydrated) {
     return (
@@ -227,6 +227,7 @@ function CheckoutPage() {
     const purchasedProductIds = getPurchasedProductIds(createdOrder)
     if (purchasedProductIds.length > 0) removeWishlistItems(purchasedProductIds)
     clearCart()
+    showSuccess('Order Placed', `Order ${orderNumber} was placed successfully.`, 7000)
 
     if (isAuthenticated) {
       navigate(`/account/orders/${encodeURIComponent(orderNumber)}`, {
@@ -244,7 +245,7 @@ function CheckoutPage() {
   const placeOrder = async (event) => {
     event.preventDefault()
     if (submitting || !validate()) {
-      setFeedback('Review the highlighted checkout fields before placing your order.')
+      showWarning('Review Checkout Details', 'Review the highlighted checkout fields before placing your order.')
       return
     }
 
@@ -282,7 +283,8 @@ function CheckoutPage() {
       completeCheckout(payload)
     } catch (error) {
       if (error?.code === 'REQUEST_TIMEOUT') {
-        setFeedback('Your order is taking longer than expected. We’re checking whether it was placed.')
+        setFeedback('Checking your order status…')
+        showInfo('Order Verification', 'Your order is taking longer than expected. We’re checking whether it was placed.', 8000)
 
         try {
           const recovered = await recoverCheckoutOrder({
@@ -295,8 +297,11 @@ function CheckoutPage() {
         } catch (recoveryError) {
           if (recoveryError?.status === 401 && token) logout()
           setErrors(recoveryError?.errors || {})
-          setFeedback(
+          setFeedback('')
+          showError(
+            'Order Status Unconfirmed',
             'We could not confirm whether your order was placed. Please try again using the same checkout session or contact support.',
+            9000,
           )
           return
         }
@@ -304,7 +309,8 @@ function CheckoutPage() {
 
       if (error?.status === 401 && token) logout()
       setErrors(error?.errors || {})
-      setFeedback(error?.message || 'Your order could not be placed. Your cart has been preserved.')
+      setFeedback('')
+      showError('Order Placement Failed', error?.message || 'Your order could not be placed. Your cart has been preserved.', 8000)
     } finally {
       setSubmitting(false)
     }
@@ -343,13 +349,7 @@ function CheckoutPage() {
             </p>
           )}
 
-          <div
-            ref={errorRef}
-            className={`checkout-page__feedback ${feedback && !submitting ? 'checkout-page__feedback--error' : ''}`}
-            role="status"
-            aria-live="polite"
-            tabIndex="-1"
-          >
+          <div className="checkout-page__feedback" role="status" aria-live="polite">
             {feedback}
           </div>
 

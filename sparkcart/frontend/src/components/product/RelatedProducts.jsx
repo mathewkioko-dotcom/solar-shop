@@ -1,8 +1,10 @@
 import { memo, useEffect, useState } from 'react'
 import { getRelatedProducts } from '../../services/productService'
+import { useToast } from '../../hooks/useToast'
 import ProductCard from './ProductCard'
 
 function RelatedProducts({ currentProduct }) {
+  const { showError } = useToast()
   const categoryId = currentProduct?.categoryId
   const currentProductId = currentProduct?.id
   const canFetch = categoryId !== null
@@ -36,6 +38,7 @@ function RelatedProducts({ currentProduct }) {
       })
       .catch((error) => {
         if (!active || error?.name === 'AbortError') return
+        showError('Related Products Unavailable', error?.message || 'Related products could not be loaded.')
         setRequestState({
           key: requestKey,
           status: 'error',
@@ -47,7 +50,7 @@ function RelatedProducts({ currentProduct }) {
       active = false
       controller.abort()
     }
-  }, [canFetch, categoryId, currentProductId, requestKey])
+  }, [canFetch, categoryId, currentProductId, requestKey, showError])
 
   if (!canFetch || status === 'error' || (status === 'success' && products.length === 0)) {
     return null

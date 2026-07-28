@@ -11,6 +11,7 @@ import { categories } from '../../data/homeData'
 import { useAuth } from '../../hooks/useAuth'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import { getProductSuggestions } from '../../services/productService'
 import '../../styles/auth.css'
 import '../../styles/search-dropdown.css'
@@ -31,6 +32,7 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
   const { isAuthenticated, logout, user } = useAuth()
   const { itemCount: cartItemCount } = useCart()
   const { itemCount: wishlistItemCount } = useWishlist()
+  const { showError, showSuccess } = useToast()
   const searchWrapperRef = useRef(null)
   const accountWrapperRef = useRef(null)
   const [suggestions, setSuggestions] = useState([])
@@ -58,6 +60,7 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
           setSuggestions([])
           setSearchStatus('error')
           setActiveIndex(-1)
+          showError('Search Unavailable', error?.message || 'Unable to connect to the server. Please try again.')
         })
     }, 300)
 
@@ -65,7 +68,7 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
       window.clearTimeout(debounceTimer)
       controller.abort()
     }
-  }, [normalizedSearch])
+  }, [normalizedSearch, showError])
 
   useEffect(() => {
     const closeWhenClickingOutside = (event) => {
@@ -161,8 +164,9 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
   const signOut = useCallback(async () => {
     setAccountMenuOpen(false)
     await logout()
+    showSuccess('Signed Out', 'You have been signed out successfully.')
     navigate('/')
-  }, [logout, navigate])
+  }, [logout, navigate, showSuccess])
 
   return <div className="main-header"><div className="container main-header-content">
     <button className="mobile-menu-button" type="button" aria-label="Open navigation" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}><SvgIcon src={menuIcon} size={24} /></button>
@@ -192,7 +196,6 @@ function Header({ searchTerm, setSearchTerm, categoryMenuOpen, setCategoryMenuOp
       {showDropdown && (
         <div className="search-dropdown" id="header-search-suggestions" role="listbox" aria-label="Product suggestions">
           {searchStatus === 'loading' && <div className="search-dropdown__status" role="status">Searching products...</div>}
-          {searchStatus === 'error' && <div className="search-dropdown__status" role="status">Search is temporarily unavailable.</div>}
           {searchStatus === 'success' && suggestions.length === 0 && <div className="search-dropdown__status" role="status">No matching products found.</div>}
           {suggestions.map((product, index) => (
             <button

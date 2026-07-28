@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import { getOrders } from '../../services/orderService'
 import { formatKes } from '../../utils/formatCurrency'
@@ -21,6 +22,7 @@ const readable = (value) => String(value || 'pending').replaceAll('_', ' ')
 
 function OrdersPage() {
   const { token } = useAuth()
+  const { showError } = useToast()
   const [page, setPage] = useState(1)
   const [orders, setOrders] = useState([])
   const [meta, setMeta] = useState({})
@@ -40,12 +42,14 @@ function OrdersPage() {
       })
       .catch((error) => {
         if (error?.name === 'AbortError') return
-        setMessage(error?.message || 'Order history could not be loaded.')
+        const nextMessage = error?.message || 'Order history could not be loaded.'
+        setMessage(nextMessage)
+        showError('Order History Unavailable', nextMessage)
         setStatus('error')
       })
 
     return () => controller.abort()
-  }, [page, retryCount, token])
+  }, [page, retryCount, showError, token])
 
   const changePage = (nextPage) => {
     setStatus('loading')

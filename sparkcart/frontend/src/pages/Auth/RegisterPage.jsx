@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import eyeIcon from '../../assets/icons/actions/eye.svg'
 import eyeOffIcon from '../../assets/icons/actions/eye-off.svg'
 import SvgIcon from '../../components/ui/SvgIcon'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import '../../styles/auth.css'
 
@@ -18,7 +19,7 @@ const getFieldMessage = (error, field) => {
 function RegisterPage() {
   const navigate = useNavigate()
   const { register } = useAuth()
-  const errorRef = useRef(null)
+  const { showError, showSuccess, showWarning } = useToast()
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -27,19 +28,13 @@ function RegisterPage() {
     passwordConfirmation: '',
   })
   const [errors, setErrors] = useState({})
-  const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  useEffect(() => {
-    if (submitError) errorRef.current?.focus()
-  }, [submitError])
 
   const updateField = (event) => {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
     setErrors((current) => ({ ...current, [name]: '' }))
-    setSubmitError('')
   }
 
   const submitRegistration = async (event) => {
@@ -60,11 +55,12 @@ function RegisterPage() {
     }
 
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      showWarning('Review Registration Details', 'Please correct the highlighted fields.')
+      return
+    }
 
     setSubmitting(true)
-    setSubmitError('')
-
     try {
       await register({
         firstName,
@@ -73,6 +69,7 @@ function RegisterPage() {
         password: form.password,
         passwordConfirmation: form.passwordConfirmation,
       })
+      showSuccess('Account Created', 'Your Baraka Solar Shop account is ready.')
       navigate('/account', { replace: true })
     } catch (error) {
       setErrors({
@@ -82,7 +79,7 @@ function RegisterPage() {
         password: getFieldMessage(error, 'password'),
         passwordConfirmation: getFieldMessage(error, 'password_confirmation'),
       })
-      setSubmitError(error?.message || 'Your account could not be created.')
+      showError('Registration Failed', error?.message || 'Your account could not be created.')
     } finally {
       setSubmitting(false)
     }
@@ -99,12 +96,6 @@ function RegisterPage() {
           </div>
 
           <form className="auth-page__form" noValidate onSubmit={submitRegistration}>
-            {submitError && (
-              <div className="auth-page__error" ref={errorRef} role="alert" tabIndex="-1">
-                {submitError}
-              </div>
-            )}
-
             <div className="auth-page__field-grid">
               <div className="auth-page__field">
                 <label htmlFor="register-first-name">First name</label>

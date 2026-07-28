@@ -1,0 +1,193 @@
+.toast-container {
+  position: fixed;
+  z-index: 2000;
+  top: max(20px, env(safe-area-inset-top));
+  right: max(20px, env(safe-area-inset-right));
+  display: flex;
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  flex-direction: column;
+  overflow: visible auto;
+  pointer-events: none;
+  scrollbar-width: thin;
+}
+
+.toast-notification {
+  --toast-accent: #197449;
+  --toast-tint: rgba(25, 116, 73, 0.12);
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 82px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-left: 4px solid var(--toast-accent);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 18px 45px rgba(15, 23, 42, 0.16),
+    0 3px 10px rgba(15, 23, 42, 0.08);
+  color: #15233b;
+  pointer-events: auto;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  animation: toast-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toast-notification--error {
+  --toast-accent: #c93b45;
+  --toast-tint: rgba(201, 59, 69, 0.11);
+}
+
+.toast-notification--warning {
+  --toast-accent: #c77a08;
+  --toast-tint: rgba(199, 122, 8, 0.13);
+}
+
+.toast-notification--info {
+  --toast-accent: #246fb3;
+  --toast-tint: rgba(36, 111, 179, 0.11);
+}
+
+.toast-notification--exiting {
+  pointer-events: none;
+  animation: toast-exit 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.toast-notification__surface {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 30px;
+  gap: 11px;
+  align-items: start;
+  padding: 15px 12px 16px 14px;
+}
+
+.toast-notification__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--toast-tint);
+  color: var(--toast-accent);
+}
+
+.toast-notification__content {
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.toast-notification__content strong {
+  display: block;
+  margin: 0;
+  color: #102039;
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.toast-notification__content p {
+  margin: 4px 0 0;
+  color: #526176;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.toast-notification__close {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.toast-notification__close:hover {
+  background: rgba(15, 23, 42, 0.07);
+  color: #17243a;
+}
+
+.toast-notification__close:active {
+  transform: scale(0.94);
+}
+
+.toast-notification__close:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--toast-accent) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.toast-notification__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--toast-accent);
+  transform-origin: left center;
+  animation: toast-progress var(--toast-duration) linear forwards;
+}
+
+.toast-notification--exiting .toast-notification__progress {
+  animation-play-state: paused;
+}
+
+@keyframes toast-enter {
+  from {
+    max-height: 0;
+    min-height: 0;
+    margin-bottom: 0;
+    opacity: 0;
+    transform: translate3d(34px, 0, 0);
+  }
+  to {
+    max-height: 600px;
+    min-height: 82px;
+    margin-bottom: 12px;
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    max-height: 600px;
+    margin-bottom: 12px;
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    max-height: 0;
+    min-height: 0;
+    margin-bottom: 0;
+    border-width: 0;
+    opacity: 0;
+    transform: translate3d(28px, 0, 0);
+  }
+}
+
+@keyframes toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@media (max-width: 575.98px) {
+  .toast-container {
+    top: max(12px, env(safe-area-inset-top));
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-notification,
+  .toast-notification--exiting {
+    animation-duration: 1ms;
+  }
+}

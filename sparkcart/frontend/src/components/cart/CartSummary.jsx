@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../../hooks/useCart'
+import { useToast } from '../../hooks/useToast'
 
 const formatPrice = (price) => (
   `KSh ${new Intl.NumberFormat('en-KE', {
@@ -11,6 +12,7 @@ const formatPrice = (price) => (
 function CartSummary() {
   const navigate = useNavigate()
   const { clearCart, itemCount, items, subtotal } = useCart()
+  const { showSuccess } = useToast()
   const [isConfirmingClear, setIsConfirmingClear] = useState(false)
   const isEmpty = items.length === 0
 
@@ -21,6 +23,7 @@ function CartSummary() {
   const confirmClearCart = () => {
     clearCart()
     setIsConfirmingClear(false)
+    showSuccess('Cart Cleared', 'All items were removed from your cart.')
   }
 
   return (

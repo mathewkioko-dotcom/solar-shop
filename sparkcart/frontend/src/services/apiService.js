@@ -54,7 +54,7 @@ export const authenticatedRequest = async (path, options = {}) => {
         'REQUEST_TIMEOUT',
       )
     }
-    throw new ApiServiceError('Unable to connect to the shop service.')
+    throw new ApiServiceError('Unable to connect to the server. Please try again.')
   }
 
   if (response.status === 204) return {}

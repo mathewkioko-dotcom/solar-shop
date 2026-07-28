@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import ProductSummaryTable from '../../components/ProductSummaryTable'
 import { EmptyState, ErrorState, LoadingState, PageHeader } from '../../components/AdminUI'
 import { getAdminDashboard } from '../../services/adminApi'
+import { useToast } from '../../../hooks/useToast'
 
 const statConfig = [
   ['products', 'Total products', '▦'],
@@ -15,14 +16,15 @@ const statConfig = [
 ]
 
 export default function DashboardPage() {
+  const { showError } = useToast()
   const [state, setState] = useState({ status: 'loading', data: null, error: '', retry: 0 })
   useEffect(() => {
     const controller = new AbortController()
     getAdminDashboard(controller.signal)
       .then((data) => setState((current) => ({ ...current, status: 'success', data, error: '' })))
-      .catch((error) => { if (error.name !== 'AbortError') setState((current) => ({ ...current, status: 'error', error: error.message })) })
+      .catch((error) => { if (error.name !== 'AbortError') { setState((current) => ({ ...current, status: 'error', error: error.message })); showError('Dashboard Unavailable', error.message) } })
     return () => controller.abort()
-  }, [state.retry])
+  }, [showError, state.retry])
   return <div className="admin-page">
     <PageHeader eyebrow="Store overview" title="Good decisions start here" description="A live view of catalogue health and the products that need attention." actions={<Link className="admin-button" to="/admin/products/new">Add Product</Link>} />
     {state.status === 'loading' ? <LoadingState rows={7} /> : state.status === 'error' ? <ErrorState message={state.error} onRetry={() => setState((current) => ({ ...current, retry: current.retry + 1 }))} /> : <>

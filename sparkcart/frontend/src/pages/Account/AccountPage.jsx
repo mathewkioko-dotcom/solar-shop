@@ -7,6 +7,7 @@ import SvgIcon from '../../components/ui/SvgIcon'
 import { useAuth } from '../../hooks/useAuth'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import { getSavedAddresses } from '../../services/checkoutService'
 import '../../styles/auth.css'
@@ -29,6 +30,7 @@ function AccountPage() {
   const { logout, token, user } = useAuth()
   const { itemCount: cartItemCount } = useCart()
   const { itemCount: wishlistItemCount } = useWishlist()
+  const { showError, showSuccess } = useToast()
   const [addressCount, setAddressCount] = useState(null)
 
   useEffect(() => {
@@ -37,14 +39,18 @@ function AccountPage() {
     getSavedAddresses(token, controller.signal)
       .then((addresses) => setAddressCount(addresses.length))
       .catch((error) => {
-        if (error?.name !== 'AbortError') setAddressCount(null)
+        if (error?.name !== 'AbortError') {
+          setAddressCount(null)
+          showError('Addresses Unavailable', error?.message || 'Saved addresses could not be loaded.')
+        }
       })
 
     return () => controller.abort()
-  }, [token])
+  }, [showError, token])
 
   const signOut = async () => {
     await logout()
+    showSuccess('Signed Out', 'You have been signed out successfully.')
     navigate('/', { replace: true })
   }
 

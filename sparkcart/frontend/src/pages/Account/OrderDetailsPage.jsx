@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 import SiteLayout from '../../layouts/SiteLayout'
 import { getOrder, normalizeOrder } from '../../services/orderService'
 import { formatKes } from '../../utils/formatCurrency'
@@ -29,6 +30,7 @@ function OrderDetailsPage() {
   const { orderNumber } = useParams()
   const location = useLocation()
   const { token } = useAuth()
+  const { showError } = useToast()
   const confirmedOrder = location.state?.order
     ? normalizeOrder(location.state.order)
     : null
@@ -56,14 +58,16 @@ function OrderDetailsPage() {
       })
       .catch((error) => {
         if (error?.name === 'AbortError') return
-        setMessage(error?.status === 404
+        const nextMessage = error?.status === 404
           ? 'This order could not be found.'
-          : error?.message || 'The order could not be loaded.')
+          : error?.message || 'The order could not be loaded.'
+        setMessage(nextMessage)
+        showError(error?.status === 404 ? 'Order Not Found' : 'Order Unavailable', nextMessage)
         setStatus('error')
       })
 
     return () => controller.abort()
-  }, [hasConfirmedOrder, orderNumber, retryCount, token])
+  }, [hasConfirmedOrder, orderNumber, retryCount, showError, token])
 
   const retry = () => {
     setStatus('loading')
@@ -103,11 +107,6 @@ function OrderDetailsPage() {
                 <h1>Order confirmation</h1>
                 <span>{order.orderNumber}</span>
               </header>
-              {location.state?.orderConfirmed && (
-                <div className="checkout-page__confirmation" role="status" aria-live="polite">
-                  Your order has been created. Payment and delivery remain pending confirmation.
-                </div>
-              )}
               <div className="checkout-page__details-grid">
                 <section className="checkout-page__card">
                   <h2>Order status</h2>

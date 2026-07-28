@@ -4,6 +4,7 @@ import shoppingBagIcon from '../../assets/icons/ecommerce/shopping-bag.svg'
 import wishlistIcon from '../../assets/icons/ecommerce/wishlist.svg'
 import { useCart } from '../../hooks/useCart'
 import { useWishlist } from '../../hooks/useWishlist'
+import { useToast } from '../../hooks/useToast'
 import SvgIcon from '../ui/SvgIcon'
 
 const formatPrice = (price) => {
@@ -19,6 +20,7 @@ const formatPrice = (price) => {
 function ProductCard({ product }) {
   const { addItem } = useCart()
   const { isWishlisted, toggleItem } = useWishlist()
+  const { showError, showSuccess } = useToast()
   const [imageFailed, setImageFailed] = useState(false)
   const stockLabel = product.stock === null
     ? 'Availability on request'
@@ -38,7 +40,13 @@ function ProductCard({ product }) {
           aria-label={`${isProductWishlisted ? 'Remove' : 'Add'} ${product.name} ${isProductWishlisted ? 'from' : 'to'} wishlist`}
           onClick={(event) => {
             event.stopPropagation()
-            toggleItem(product)
+            const wasWishlisted = isProductWishlisted
+            if (toggleItem(product)) {
+              showSuccess(
+                wasWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist',
+                `${product.name} was ${wasWishlisted ? 'removed from' : 'saved to'} your wishlist.`,
+              )
+            }
           }}
         >
           <SvgIcon src={wishlistIcon} size={19} />
@@ -88,7 +96,8 @@ function ProductCard({ product }) {
           disabled={isUnavailable}
           onClick={(event) => {
             event.stopPropagation()
-            addItem(product, 1)
+            if (addItem(product, 1)) showSuccess('Added to Cart', `${product.name} added to your cart.`)
+            else showError('Cart Update Failed', 'This product could not be added to the cart.')
           }}
         >
           <SvgIcon src={shoppingBagIcon} size={18} />

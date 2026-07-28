@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ConfirmDialog, EmptyState, ErrorState, LoadingState, PageHeader, Pagination, StockBadge } from '../../components/AdminUI'
-import { useAdminNotifications } from '../../components/AdminNotifications'
+import { useToast } from '../../../hooks/useToast'
 import { adminProducts, getAdminCatalogs, getAdminDashboard } from '../../services/adminApi'
 
 export default function InventoryPage() {
@@ -11,23 +11,25 @@ export default function InventoryPage() {
   const [catalogs, setCatalogs] = useState({ brands: [], categories: [] })
   const [drafts, setDrafts] = useState({})
   const [confirm, setConfirm] = useState(null)
-  const { notify } = useAdminNotifications()
+  const { showError, showSuccess } = useToast()
   const setFilter = (key, value) => { const next = new URLSearchParams(params); value ? next.set(key, value) : next.delete(key); if (key !== 'page') next.delete('page'); setParams(next) }
   useEffect(() => {
     const controller = new AbortController()
-    getAdminCatalogs(controller.signal).then(setCatalogs).catch(() => {})
+    getAdminCatalogs(controller.signal).then(setCatalogs).catch((error) => {
+      if (error.name !== 'AbortError') showError('Inventory Filters Unavailable', error.message)
+    })
     return () => controller.abort()
-  }, [])
+  }, [showError])
   useEffect(() => {
     const controller = new AbortController()
     Promise.all([adminProducts.list({ ...filters, per_page: 20 }, controller.signal), getAdminDashboard(controller.signal)])
       .then(([payload, summary]) => { setState((current) => ({ ...current, status: 'success', products: payload.data || [], meta: payload.meta, summary, error: '' })); setDrafts(Object.fromEntries((payload.data || []).map((product) => [product.id, product.stock]))) })
-      .catch((error) => { if (error.name !== 'AbortError') setState((current) => ({ ...current, status: 'error', error: error.message })) })
+      .catch((error) => { if (error.name !== 'AbortError') { setState((current) => ({ ...current, status: 'error', error: error.message })); showError('Inventory Unavailable', error.message) } })
     return () => controller.abort()
-  }, [filters, state.retry])
+  }, [filters, showError, state.retry])
   const requestUpdate = (product) => {
     const stock = Number(drafts[product.id])
-    if (!Number.isInteger(stock) || stock < 0) { notify('Stock must be a non-negative whole number.', 'error'); return }
+    if (!Number.isInteger(stock) || stock < 0) { showError('Invalid Stock', 'Stock must be a non-negative whole number.'); return }
     if (Math.abs(stock - product.stock) >= Math.max(50, product.stock * 0.5)) setConfirm({ product, stock })
     else updateStock(product, stock)
   }
@@ -37,8 +39,8 @@ export default function InventoryPage() {
       const payload = await adminProducts.stock(product.id, stock)
       const updated = payload.data || payload
       setState((current) => ({ ...current, products: current.products.map((item) => item.id === product.id ? updated : item), retry: current.retry + 1 }))
-      notify('Stock updated.')
-    } catch (error) { notify(error.message, 'error') }
+      showSuccess('Stock Updated', `${product.name} now has ${stock} units in stock.`)
+    } catch (error) { showError('Stock Update Failed', error.message) }
   }
   return <div className="admin-page"><PageHeader eyebrow="Stock control" title="Inventory" description="Review stock health and apply absolute stock corrections safely." />
     {state.summary && <section className="admin-stat-grid admin-stat-grid--inventory"><article className="admin-stat-card"><span>Σ</span><div><strong>{state.summary.inventory.total_units}</strong><p>Total units in stock</p></div></article><article className="admin-stat-card"><span>!</span><div><strong>{state.summary.counts.low_stock_products}</strong><p>Low-stock products</p></div></article><article className="admin-stat-card"><span>×</span><div><strong>{state.summary.counts.out_of_stock_products}</strong><p>Out-of-stock products</p></div></article></section>}

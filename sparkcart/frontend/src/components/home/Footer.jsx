@@ -7,6 +7,9 @@ import youtubeIcon from "../../assets/icons/social/youtube.svg";
 import expertSupportIcon from "../../assets/icons/ecommerce/expert-support.svg";
 import genuineIcon from "../../assets/icons/ecommerce/genuine.svg";
 import manufacturerWarrantyIcon from "../../assets/icons/ecommerce/manufacturer-warranty.svg";
+import { Link } from "react-router-dom";
+import { businessInfo } from "../../config/businessInfo";
+import { footerShopLinks, informationNavigation } from "../../config/informationNavigation";
 import { COMPANY } from "../../config/siteConfig";
 import SvgIcon from "../ui/SvgIcon";
 
@@ -75,35 +78,28 @@ const Footer = () => {
         <div className="footer-column">
           <h3>Shop</h3>
 
-          <a href="/">Solar Panels</a>
-          <a href="/">Solar Batteries</a>
-          <a href="/">Hybrid Inverters</a>
-          <a href="/">Charge Controllers</a>
-          <a href="/">Solar Kits</a>
-          <a href="/">Mounting & Accessories</a>
-          <a href="/">Cables & Connectors</a>
+          {footerShopLinks.map((item) => (
+            <Link key={item.label} to={item.path}>{item.label}</Link>
+          ))}
         </div>
 
         {/* Customer Support */}
         <div className="footer-column">
           <h3>Customer Support</h3>
 
-          <a href="/">Contact Us</a>
-          <a href="/">Shipping Information</a>
-          <a href="/">Returns Policy</a>
-          <a href="/">Warranty</a>
-          <a href="/">Frequently Asked Questions</a>
-          <a href="/">Privacy Policy</a>
+          {informationNavigation.map((item) => (
+            <Link key={item.path} to={item.path}>{item.label}</Link>
+          ))}
         </div>
 
         {/* Contact */}
         <div className="footer-column">
           <h3>Contact Us</h3>
 
-          <p>Nairobi, Kenya</p>
-          <p>0700 123 456</p>
-          <p>sales@barakasolar.co.ke</p>
-          <p>Mon – Sat: 8:00 AM – 6:00 PM</p>
+          <p>{businessInfo.address}</p>
+          <p>{businessInfo.phone}</p>
+          <p>{businessInfo.salesEmail}</p>
+          <p>{businessInfo.businessHours}</p>
 
           <div className="footer-certification">
             <span><SvgIcon src={genuineIcon} size={15} /> Genuine Products</span>
@@ -122,8 +118,8 @@ const Footer = () => {
           </p>
 
           <div className="footer-bottom-links">
-            <a href="/">Terms & Conditions</a>
-            <a href="/">Privacy Policy</a>
+            <Link to="/terms-and-conditions">Terms &amp; Conditions</Link>
+            <Link to="/privacy-policy">Privacy Policy</Link>
           </div>
 
         </div>
